@@ -21,9 +21,53 @@ end
 
 function gaussian_pulse(m_order, T0, P0, C0, t, t_offset)
     t_scaled = (t - t_offset) / T0
-    sqrt(P0) * exp(-0.5 * (1 + 1im* C0) * t_scaled .^ (2 * m_order))
+    sqrt(P0) * exp(-0.5(1 + 1im * C0) * t_scaled .^ (2m_order))
 end
 
-function integrate_RK4IP(alpha, beta, gamma, steep, t_raman, L, h0, u0)
+function integrate_RK4IP(u0, L, h0, alpha, beta, gamma, steep, t_raman)
+    z = 0
+    n_steps = 0
+    n_steps_rejected = 0
+    steps = Float64[]
+    error_prev = 1
+    # PI control terms
+    ae = 0.7
+    be = 0.4
 
+    while z < L
+    end
 end
+
+function dispersion_exponent(w, apha, beta :: (Float64, Float64))
+    beta2 = beta[1]
+    beta3 = beta[2]
+    # FIXME: check all beta signs, coz i'm pretty sure some are wrong!!!
+    -alpha / 2 + 0.5im * beta2 * w.^2 - 1im * beta3 / 6 * w.^3 
+end
+
+function step_RK4IP(u, h, disp, nonlinear_op, fft_plan, ifft_plan)
+    # FIXME: maybe later vectorize all this stuff
+    u1 = fft_plan(disp .* ifft_plan(u))
+    k1 = fft_plan(disp .* ifft_plan(nonlinear_op(u, h)))
+    k2 = nonlinear_op(u1 + k1 / 2, h)
+    k3 = nonlinear_op(u1 + k2 / 2, h)
+    k4 = nonlinear_op(fft_plan(disp .* ifft_plan(u1 + k3)), h)
+    fft_plan(disp .* ifft_plan(u1 + (k1 + 2.(k2 +k3)) / 6)) + k4 / 6
+end
+
+function cplx_array_max(a, b)
+    len = length(a)
+    u = zeros(len)
+    for i in 1:len
+        u[i] = abs(a[i]) > abs(b[i]) ? a[i] : b[i]
+    end
+    return u
+end
+
+function integration_error(u1, u2, atol, rtol)
+    error_scale = atol + rtol * cplx_array_max(u1, u2)
+    maximum(abs((u1 -u2) ./ error_scale))
+end
+
+
+
