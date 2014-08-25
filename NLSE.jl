@@ -24,7 +24,9 @@ function gaussian_pulse(m_order, T0, P0, C0, t, t_offset)
     sqrt(P0) * exp(-0.5(1 + 1im * C0) * t_scaled .^ (2m_order))
 end
 
-function integrate_RK4IP(u0, L, h0, alpha, beta, gamma, steep, t_raman)
+function integrate_RK4IP(u0, t_grid, w_grid, L, h0, alpha, beta, gamma, steep, t_raman)
+    u = u0
+    h = h0
     z = 0
     n_steps = 0
     n_steps_rejected = 0
@@ -34,11 +36,38 @@ function integrate_RK4IP(u0, L, h0, alpha, beta, gamma, steep, t_raman)
     ae = 0.7
     be = 0.4
 
+    d_exp = dispersion_exponent(w_grid, alpha, beta)
+    disp_full = exp(h * d_exp)
+    disp_half = exp(h/2 * d_exp)
+
     while z < L
+        # full step
+        u_full = step_RK4IP(u, h, disp_full, nonlinear_op, fft_plan, ifft_plan)
+        # 2 half-steps
+        u_half = step_RK4IP(u, h/2, disp_half, nonlinear_op, fft_plan, ifft_plan)
+        u_half = step_RK4IP(u_half, h/2, disp_half, nonlinear_op, fft_plan, ifft_plan)
+        
+        err = integration_error(u_full, u_half, atol, rtol)
+        if err > 1
+            n_steps_rejected += 1
+            h *= scale_step_fail(err, err_prev, atol, rtol)
+            disp_full = exp(h * d_exp)
+            disp_half = exp(h/2 * d_exp)
+        else
+            z += h
+            n_steps += 1
+            append!(steps, [h])             
+            h *= scale_step_ok(err, err_prev, atol, rtol)
+            h = min(L - z, h)
+            disp_full = exp(h * d_exp)
+            disp_half = exp(h/2 * d_exp)
+            err_prev = err
+            u = u_half
+        end
     end
 end
 
-function dispersion_exponent(w, apha, beta :: (Float64, Float64))
+function dispersion_exponent(w, alpha, beta :: (Float64, Float64))
     beta2 = beta[1]
     beta3 = beta[2]
     # FIXME: check all beta signs, coz i'm pretty sure some are wrong!!!
@@ -68,6 +97,15 @@ function integration_error(u1, u2, atol, rtol)
     error_scale = atol + rtol * cplx_array_max(u1, u2)
     maximum(abs((u1 -u2) ./ error_scale))
 end
+
+function PI_control_factor(err, err_prev, ae, be)
+    err^(-ae/5) * err_prev^(be/5)
+
+function scale_step_fail(err, err_prev, ae, be)
+    0.8max(1/5, PI_control_factor(err, err_prev, ae, be))
+
+function scale_step_ok(err, err_prev, ae, be)
+    0.8min(10, PI_control_factor(err, err_prev, ae, be))
 
 
 
