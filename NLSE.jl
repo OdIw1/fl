@@ -36,6 +36,9 @@ function integrate_RK4IP(u0, t_grid, w_grid, L, h0, alpha, beta, gamma, steep, t
     ae = 0.7
     be = 0.4
 
+    dt = t_grid[end] - t_grid[end - 1]
+    nonlinear_op = (u_, h_) -> nonlinear_operator(u_, h_, dt, gamma, steep, t_raman)
+
     d_exp = dispersion_exponent(w_grid, alpha, beta)
     disp_full = exp(h * d_exp)
     disp_half = exp(h/2 * d_exp)
@@ -82,6 +85,29 @@ function step_RK4IP(u, h, disp, nonlinear_op, fft_plan, ifft_plan)
     k3 = nonlinear_op(u1 + k2 / 2, h)
     k4 = nonlinear_op(fft_plan(disp .* ifft_plan(u1 + k3)), h)
     fft_plan(disp .* ifft_plan(u1 + (k1 + 2.(k2 +k3)) / 6)) + k4 / 6
+end
+
+function nonlinear_operator(u, h, dt, gamma, steep, t_raman)
+    u2 = abs(u) .^ 2
+    if steep == 0 && t_raman ==0
+        return 1im * h * gamma * u .* u2
+    elseif steep == 0
+        return 1im * h * gamma * u .* (u2 - t_raman * df(u2, dt))
+    else
+        return 1im * h * gamma * u .* (u2 + (1im * steep - t_raman) * df(u2, dt) 
+            + 1im * steep * df(u, dt) .* conj(u))
+    end
+end
+
+function df(x, dx)
+    len = length(x)
+    tmp = zeros(len)
+    tmp[1] = (x[2] - x[end]) / (2dx)
+    tmp[end] = (x[1] - x[end-1]) / (2dx)
+    for i in 2:(len-1)
+        tmp[i] = (x[i+1] - x[i-1]) / (2dx)
+    end
+    return tmp
 end
 
 function cplx_array_max(a, b)
