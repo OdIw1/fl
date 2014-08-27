@@ -24,7 +24,7 @@ function gaussian_pulse(m_order, T0, P0, C0, t, t_offset)
     sqrt(P0) * exp(-0.5(1 + 1im * C0) * t_scaled .^ (2m_order))
 end
 
-function integrate_RK4IP(u0, t_grid, w_grid, L, h0, alpha, beta, gamma, steep, t_raman)
+function integrate_RK4IP(u0::Vector{Float64}, t_grid, w_grid, L, h0, alpha, beta, gamma, steep, t_raman)
     u = u0
     h = h0
     z = 0
@@ -77,7 +77,7 @@ function dispersion_exponent(w, alpha, beta :: (Float64, Float64))
     -alpha / 2 + 0.5im * beta2 * w.^2 - 1im * beta3 / 6 * w.^3 
 end
 
-function step_RK4IP(u, h, disp, nonlinear_op, fft_plan, ifft_plan)
+function step_RK4IP(u, h, disp, nonlinear_op::Function, fft_plan, ifft_plan)
     # FIXME: maybe later vectorize all this stuff
     u1 = fft_plan(disp .* ifft_plan(u))
     k1 = fft_plan(disp .* ifft_plan(nonlinear_op(u, h)))
