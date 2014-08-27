@@ -126,12 +126,16 @@ end
 
 function PI_control_factor(err, err_prev, ae, be)
     err^(-ae/5) * err_prev^(be/5)
+end
 
 function scale_step_fail(err, err_prev, ae, be)
     0.8max(1/5, PI_control_factor(err, err_prev, ae, be))
+end
 
 function scale_step_ok(err, err_prev, ae, be)
     0.8min(10, PI_control_factor(err, err_prev, ae, be))
+end
 
+end
 
 
