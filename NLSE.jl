@@ -1,5 +1,5 @@
 module NLSE
-export create_t_grid, create_w_grid
+export t_grid, w_grid, secant_pulse, gaussian_pulse, integrate_RK4IP
 
 function t_grid(n, T)
 # In MATLAB version 'T' was a scaling factor: time window was (-T0 T, T0 T),
@@ -14,53 +14,58 @@ function w_grid(n, T)
     dw * [0 : (n/2 -1), -n/2 : -1]
 end
 
-function secant_pulse(T0, P0, C0, t, t_offset=0)
+function secant_pulse(T0, P0, C0, t::Vector, t_offset=0)
     t_scaled = (t - t_offset) / T0
     sqrt(P0) * sech(t_scaled) .* exp(-0.5im * C0 * (t_scaled).^2)
 end
 
-function gaussian_pulse(m_order, T0, P0, C0, t, t_offset)
+function gaussian_pulse(m_order, T0, P0, C0, t::Vector, t_offset)
     t_scaled = (t - t_offset) / T0
     sqrt(P0) * exp(-0.5(1 + 1im * C0) * t_scaled .^ (2m_order))
 end
 
-function integrate_RK4IP(u0::Vector{Float64}, t_grid, w_grid, L, h0, alpha, beta, gamma, steep, t_raman)
+function integrate_RK4IP{T}(u0::Vector{Complex{T}},
+                            t_grid::Vector{T},
+                            w_grid::Vector{T},
+                            fft_plan::Function,
+                            ifft_plan::Function,
+                            L, h0, alpha, beta, gamma, steep, t_raman)
     u = u0
     h = h0
     z = 0
     n_steps = 0
     n_steps_rejected = 0
-    steps = Float64[]
-    error_prev = 1
-    # PI control terms
-    ae = 0.7
-    be = 0.4
+    steps = (Float64)[]
+    err_prev = 1
 
     dt = t_grid[end] - t_grid[end - 1]
     nonlinear_op = (u_, h_) -> nonlinear_operator(u_, h_, dt, gamma, steep, t_raman)
+
+    tic()
 
     d_exp = dispersion_exponent(w_grid, alpha, beta)
     disp_full = exp(h * d_exp)
     disp_half = exp(h/2 * d_exp)
 
     while z < L
+        # println("Step $(length(steps)+1), z = $z, h = $h")
         # full step
         u_full = step_RK4IP(u, h, disp_full, nonlinear_op, fft_plan, ifft_plan)
         # 2 half-steps
         u_half = step_RK4IP(u, h/2, disp_half, nonlinear_op, fft_plan, ifft_plan)
         u_half = step_RK4IP(u_half, h/2, disp_half, nonlinear_op, fft_plan, ifft_plan)
-        
-        err = integration_error(u_full, u_half, atol, rtol)
+
+        err = integration_error(u_full, u_half)
         if err > 1
             n_steps_rejected += 1
-            h *= scale_step_fail(err, err_prev, atol, rtol)
+            h *= scale_step_fail(err, err_prev)
             disp_full = exp(h * d_exp)
             disp_half = exp(h/2 * d_exp)
         else
             z += h
             n_steps += 1
             append!(steps, [h])             
-            h *= scale_step_ok(err, err_prev, atol, rtol)
+            h *= scale_step_ok(err, err_prev)
             h = min(L - z, h)
             disp_full = exp(h * d_exp)
             disp_half = exp(h/2 * d_exp)
@@ -68,6 +73,10 @@ function integrate_RK4IP(u0::Vector{Float64}, t_grid, w_grid, L, h0, alpha, beta
             u = u_half
         end
     end
+
+    println("Time: $(toq())")
+
+    return (u, n_steps, n_steps_rejected, steps)
 end
 
 function dispersion_exponent(w, alpha, beta :: (Float64, Float64))
@@ -88,7 +97,7 @@ function step_RK4IP(u, h, disp, nonlinear_op::Function, fft_plan, ifft_plan)
 end
 
 function nonlinear_operator(u, h, dt, gamma, steep, t_raman)
-    u2 = abs(u) .^ 2
+    u2 = abs2(u)
     if steep == 0 && t_raman ==0
         return 1im * h * gamma * u .* u2
     elseif steep == 0
@@ -110,29 +119,24 @@ function df(x, dx)
     return tmp
 end
 
-function cplx_array_max(a, b)
-    len = length(a)
-    u = zeros(len)
-    for i in 1:len
-        u[i] = abs(a[i]) > abs(b[i]) ? a[i] : b[i]
-    end
-    return u
+function cplx_array_max{T <: Real}(a::Vector{Complex{T}}, b::Vector{Complex{T}})
+    return [abs(a[i]) > abs(b[i]) ? a[i] : b[i] for i in 1:length(a)]  
 end
 
-function integration_error(u1, u2, atol, rtol)
+function integration_error(u1::Vector, u2::Vector, atol=1.e-8, rtol=1.e-8)
     error_scale = atol + rtol * cplx_array_max(u1, u2)
-    maximum(abs((u1 -u2) ./ error_scale))
+    maximum(abs((u1 - u2) ./ error_scale))
 end
 
-function PI_control_factor(err, err_prev, ae, be)
+function PI_control_factor(err, err_prev, ae=0.7, be=0.4)
     err^(-ae/5) * err_prev^(be/5)
 end
 
-function scale_step_fail(err, err_prev, ae, be)
+function scale_step_fail(err, err_prev, ae=0.7, be=0.4)
     0.8max(1/5, PI_control_factor(err, err_prev, ae, be))
 end
 
-function scale_step_ok(err, err_prev, ae, be)
+function scale_step_ok(err, err_prev, ae=0.7, be=0.4)
     0.8min(10, PI_control_factor(err, err_prev, ae, be))
 end
 
