@@ -1,14 +1,4 @@
 function x()
-    # T = 100.
-    # n = 1024
-    # T0 = 1
-    # C0 = 1.
-    # P0 = 1.
-    # alpha = 0.
-    # beta = (1., 0.)
-    # gamma = 1.
-    # steep = 0
-    # t_raman = 0
 
     n = 2^14
     alpha = 0.
@@ -18,7 +8,7 @@ function x()
     P0 = 3.01e8
     C0 = 0.
     wl = 2.64e-6
-    steep = 0
+    steep = 0.
     t_raman = 2.80e-15
     #t_raman = 0.
     T_window = 50
@@ -46,8 +36,8 @@ function x()
     fwrite("U0.tsv", U0)
 
     (u, n_steps, n_steps_rejected, steps, u_plot) = 
-        integrate_RK4IP(u, t, w, fft_plan!, ifft_plan!, 
-                        L, L/2^12, alpha, beta, gamma, steep, t_raman)
+        rk4ip(u, t, w, fft_plan!, ifft_plan!, 
+              L, L/2^12, alpha, beta, gamma, steep, t_raman)
     fwrite("u_plot.tsv", u_plot)
     fwrite("steps.tsv", steps)
 
@@ -60,8 +50,7 @@ function x()
 
     Ef = sum(abs2(u)) * (t[end] - t[end-1])
     @show (E0, Ef)
- #   @show (n_steps, n_steps_rejected)
-    (u, Uf)
+    @show (n_steps, n_steps_rejected)
 end
 
 function fwrite(fname, data)

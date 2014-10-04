@@ -1,29 +1,19 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
 
-function integrate_RK4IP(u, t_grid, w_grid, 
-                         fft_plan!, ifft_plan!,
-                         L, h, alpha, beta, gamma, steep, t_raman,
-                         nt_plot=2^7, nz_plot=2^7)
+@eval function rk4ip(u, t_grid, w_grid, 
+               fft_plan!, ifft_plan!,
+               L, h, alpha, beta, gamma, steep, t_raman,
+               nt_plot=2^7, nz_plot=2^7)
     z = 0.
     n_steps = n_steps_rejected = 0
     steps = Float64[]
     err_prev = 1.
     dt = t_grid[end] - t_grid[end - 1]
 
-    # replace this with macro!!!
-    uf = similar(u)
-    _u1 = similar(u)
-    _k1 = similar(u)
-    _k2 = similar(u)
-    _k3 = similar(u)
-    _k4 = similar(u)
-    _uabs2 = similar(u)
-    _duabs2 = similar(u)
-    _du = similar(u)
-    u_full = similar(u)
-    u_half = similar(u)
-    u_half2 = similar(u)
     ue_ = similar(u, Float64)
+    $([:($a = similar(u)) for a in 
+        [:uf, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_duabs2, :_du,
+         :u_full, :u_half, :u_half2]]...)
 
     N! = let  _uabs2 = _uabs2, _duabs2 = _duabs2, _du = _du, 
                         dt = dt, gamma = gamma, 
@@ -44,14 +34,14 @@ function integrate_RK4IP(u, t_grid, w_grid,
 
     @time @profile while z < L
         # full step
-        step_RK4IP!(u, u_full, h, disp_full, N!, 
+        rk4ip_step!(u, u_full, h, disp_full, N!, 
                     fft_plan!, ifft_plan!,
                     _u1, _k1, _k2, _k3, _k4)
         # 2 half-steps
-        step_RK4IP!(u, u_half, h/2, disp_half, N!,
+        rk4ip_step!(u, u_half, h/2, disp_half, N!,
                     fft_plan!, ifft_plan!,
                     _u1, _k1, _k2, _k3, _k4)
-        step_RK4IP!(u_half, u_half2, h/2, disp_half, N!,
+        rk4ip_step!(u_half, u_half2, h/2, disp_half, N!,
                     fft_plan!, ifft_plan!,
                     _u1, _k1, _k2, _k3, _k4)
         
@@ -91,7 +81,7 @@ function dispersion_exponent(w, alpha, beta)
     -alpha/2 + 1im/2 * beta[1] * w.^2 + 1im/6 * beta[2] * w.^3 
 end
 
-function step_RK4IP!(u, uf, h, disp, N!,
+function rk4ip_step!(u, uf, h, disp, N!,
                      fft_plan!, ifft_plan!,
                      u1, k1, k2, k3, k4)
     n = length(u)
@@ -105,7 +95,6 @@ function step_RK4IP!(u, uf, h, disp, N!,
     ifft_plan!(u1)
     @devec u1[:] = disp .* u1           
     fft_plan!(u1)
-            # @show BLAS.nrm2(n, u1, 1)
         
     BLAS.blascopy!(n, u1, 1, k2, 1)
     BLAS.blascopy!(n, u1, 1, k3, 1)
@@ -117,12 +106,10 @@ function step_RK4IP!(u, uf, h, disp, N!,
     ifft_plan!(k1)
     @devec k1[:] = disp .* k1
     fft_plan!(k1)
-            # @show BLAS.nrm2(n, k1, 1)
         
     # k2 = N(u1 + k1/2)
     BLAS.axpy!(n, 0.5 + 0.im, k1, 1, k2, 1)
     N!(k2, h)
-            # @show BLAS.nrm2(n, k2, 1)
     
     # k3 = N(u1 + k2/2)
     BLAS.axpy!(n, 0.5 + 0.im, k2, 1, k3, 1)

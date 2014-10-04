@@ -83,3 +83,13 @@ function test_fft(k = 6000, n = 2^12)
     end
 end
 
+function test_slab()
+    args = (1, 2)
+    f_slab(args...)
+end
+
+function f_slab(x,y)
+    x + y
+end
+
+
