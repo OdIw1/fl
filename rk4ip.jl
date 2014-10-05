@@ -1,36 +1,41 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
 
-@eval function rk4ip(u, t_grid, w_grid, 
-               fft_plan!, ifft_plan!,
+@eval function rk4ip(u, t_grid, w_grid, fft_plan!, ifft_plan!,
                L, h, alpha, beta, gamma, steep, t_raman,
                nt_plot=2^7, nz_plot=2^7)
     z = 0.
     n_steps = n_steps_rejected = 0
     steps = Float64[]
     err_prev = 1.
-    dt = t_grid[end] - t_grid[end - 1]
+    dt = (t_grid[end] - t_grid[1]) / (length(t_grid)-1)
 
     ue_ = similar(u, Float64)
     $([:($a = similar(u)) for a in 
-        [:uf, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_duabs2, :_du,
+        [:uf, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du,
          :u_full, :u_half, :u_half2]]...)
 
-    N! = let  _uabs2 = _uabs2, _duabs2 = _duabs2, _du = _du, 
-                        dt = dt, gamma = gamma, 
-                        steep = steep, t_raman = t_raman
-        (u_, h_) -> N_raman!(u_, _uabs2, _duabs2, _du, h_, dt, gamma, steep, t_raman)
+    N! = let _uabs2 = _uabs2, _du = _du, 
+             dt = dt, gamma = gamma, steep = steep, t_raman = t_raman
+        if t_raman == 0. && steep == 0.
+            (u_, h_) -> N_simple!(u_, h_, dt, gamma, _uabs2)
+        elseif steep == 0.
+            (u_, h_) -> N_raman!(u_, h_, dt, gamma, t_raman, _uabs2, _du)
+        else
+            (u_, h_) -> N_raman_steep!(u_, h_, dt, gamma, t_raman, steep, _uabs2, _du)
+        end
     end
+
     d_exp = dispersion_exponent(w_grid, alpha, beta)
     disp_full = exp(h * d_exp)
     disp_half = exp(h/2. * d_exp)
 
+    # prepare plotting
     do_plot = (nt_plot != 0 && nz_plot !=0)
-
     dz_plot = L / (nt_plot-1)
     t_plot_ind = round(linspace(1, length(t_grid), nt_plot))
     u_plot = zeros(Complex{Float64}, nz_plot, nt_plot)
     i_plot = 1
-    if do_plot u_plot[i_plot,:] = u[t_plot_ind] end
+    do_plot && (u_plot[i_plot,:] = u[t_plot_ind])
 
     @time @profile while z < L
         # full step
@@ -62,7 +67,7 @@
             @devec disp_full[:] = exp(h .* d_exp)
             @devec disp_half[:] = exp(h_ .* d_exp)
             err_prev = err
-            @devec u[:] = u_half2[:]
+            @devec u[:] = u_half2
 
             if do_plot && z >= i_plot * dz_plot
                 println("step: $n_steps, z: $z")
@@ -81,13 +86,9 @@ function dispersion_exponent(w, alpha, beta)
     -alpha/2 + 1im/2 * beta[1] * w.^2 + 1im/6 * beta[2] * w.^3 
 end
 
-function rk4ip_step!(u, uf, h, disp, N!,
-                     fft_plan!, ifft_plan!,
+function rk4ip_step!(u, uf, h, disp, N!, fft_plan!, ifft_plan!,
                      u1, k1, k2, k3, k4)
     n = length(u)
-    # TODO: scale!(A, b)
-    #       norm(A, Inf) returns the largest value in abs(A)
-
     BLAS.blascopy!(n, u, 1, u1, 1)
     BLAS.blascopy!(n, u, 1, k1, 1)
 
@@ -132,21 +133,50 @@ function rk4ip_step!(u, uf, h, disp, N!,
     BLAS.axpy!(n, 1/6 + 0.im, k4, 1, uf, 1)
 end
 
-function N_raman!(u, _uabs2, _duabs2, _du, h, dt, gamma, steep, t_raman)
+function N_simple!(u, h, dt, gamma, _uabs2)
     n = length(u)
     map!(Abs2Fun(), _uabs2, u)
-    BLAS.blascopy!(n, _uabs2, 1, _duabs2, 1)
-    df!(_duabs2, _du, dt)
+    k = 1im * h * gamma
+    @devec u[:] = k .* u .* _uabs2
+end    
+
+function N_raman!(u, h, dt, gamma, t_raman, _uabs2, _du)
+    n = length(u)
+
+    # _uabs2 = |u|^2 - t_raman * d(|u|^2)/dt
+    map!(Abs2Fun(), _uabs2, u)
+    df!(_uabs2, _du, dt)
     BLAS.axpy!(n, -t_raman + 0.im, _du, 1, _uabs2, 1)
+
     k = 1im * h * gamma
     @devec u[:] = k .* u .* _uabs2
 end
 
-function df!(u, _du, dx)
-    _du[1] = (u[2] - u[end]) / (2dx)
-    _du[end] = (u[1] - u[end-1]) / (2dx)
+function N_raman_steep!(u, h, dt, gamma, t_raman, steep, _uabs2, _du)
+    n = length(u)
+
+    # _uabs2 = |u|^2 + (1im*steep - t_raman) * d(|u|^2)/dt
+    map!(Abs2Fun(), _uabs2, u)
+    df!(_uabs2, _du, dt)
+    BLAS.axpy!(n, 1.im*steep - t_raman , _du, 1, _uabs2, 1)
+
+    # _du = d(u)/dt * conj(u)
+    df!(u, _du, dt)
+    @devec _du[:] = _du .* u
+
+    # _uabs2 += 1.im * steep * du
+    BLAS.axpy!(n, 1.im * steep, _du, 1, _uabs2, 1)
+
+    k = 1im * h * gamma
+    @devec u[:] = k .* u .* _uabs2
+end
+
+function df!(u, du, dx)
+    # du = d(u)/dx, u and du MUST be different arrays
+    du[1] = (u[2] - u[end]) / (2dx)
+    du[end] = (u[1] - u[end-1]) / (2dx)
     @simd for i in 2:(length(u)-1)
-        @inbounds _du[i] = (u[i+1] - u[i-1]) / (2dx)
+        @inbounds du[i] = (u[i+1] - u[i-1]) / (2dx)
     end
 end
 
