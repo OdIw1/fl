@@ -8,7 +8,6 @@ export x, y
 include("run.jl")
 include("utils.jl")
 include("ssfm.jl")
-# include("rk4ip_unoptimized.jl")
 include("rk4ip.jl")
 
 end

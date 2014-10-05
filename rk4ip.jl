@@ -1,8 +1,8 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
 
-@eval function rk4ip(u, t_grid, w_grid, fft_plan!, ifft_plan!,
-               L, h, alpha, beta, gamma, steep, t_raman,
-               nt_plot=2^7, nz_plot=2^7)
+@eval function rk4ip(u, L, h, t_grid, w_grid, 
+                     alpha, beta, gamma, steep, t_raman,
+                     fft_plan!, ifft_plan!, nt_plot=2^7, nz_plot=2^7)
     z = 0.
     n_steps = n_steps_rejected = 0
     steps = Float64[]
@@ -67,7 +67,7 @@
             @devec disp_full[:] = exp(h .* d_exp)
             @devec disp_half[:] = exp(h_ .* d_exp)
             err_prev = err
-            @devec u[:] = u_half2
+            BLAS.blascopy!(length(u), u_half2, 1, u, 1)
 
             if do_plot && z >= i_plot * dz_plot
                 println("step: $n_steps, z: $z")

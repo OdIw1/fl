@@ -17,6 +17,9 @@ function x()
 
     @show L_N, L_D = lnd(T0, P0, gamma, beta)
 
+    FFTW.set_num_threads(1)
+    BLAS.blas_set_num_threads(1) # this function is erroneously reported in REPL
+
     t = t_grid(n, T)
     w = w_grid(n, T)
     u0 = secant_pulse(T0, P0, C0, t)
@@ -24,27 +27,24 @@ function x()
 
     u = copy(u0)
     uf = zeros(u0)
-    FFTW.set_num_threads(1)
-    BLAS.blas_set_num_threads(1) # this function is erroneously reported in REPL
-    fft_plan = plan_fft(uf, (1,), FFTW.MEASURE)
-    ifft_plan = plan_ifft(uf, (1,), FFTW.MEASURE)
+    U0 = copy(u0)
+    Uf = copy(u0)
     fft_plan! = plan_fft!(uf, (1,), FFTW.MEASURE)
     ifft_plan! = plan_ifft!(uf, (1,), FFTW.MEASURE)
 
-    U0 = spectrum(u0, ifft_plan, T)
+    spectrum(u0, U0, ifft_plan!, T)
     fwrite("u0.tsv", u0)
     fwrite("U0.tsv", U0)
 
     (u, n_steps, n_steps_rejected, steps, u_plot) = 
-        rk4ip(u, t, w, fft_plan!, ifft_plan!, 
-              L, L/2^12, alpha, beta, gamma, steep, t_raman)
+        rk4ip(u, L, L/2^12, t, w, alpha, beta, gamma, steep, t_raman,
+              fft_plan!, ifft_plan!)
     fwrite("u_plot.tsv", u_plot)
     fwrite("steps.tsv", steps)
 
-    # ssfm(u, t, w, fft_plan!, ifft_plan!, 
-    #      L, L/2^14, alpha, beta, gamma, steep, t_raman)
+    # ssfm(u, L, L/2^14, t, w, alpha, beta, gamma, steep, t_raman, fft_plan!, ifft_plan!)
 
-    Uf = spectrum(u, ifft_plan, T)
+    spectrum(u, Uf, ifft_plan!, T)
     fwrite("uf.tsv", u)
     fwrite("Uf.tsv", Uf)
 

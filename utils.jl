@@ -36,6 +36,23 @@ function gaussian_pulse(m_order, T0, P0, C0, t::Vector, t_offset=0)
     sqrt(P0) * exp(-0.5(1 + 1im * C0) * t_scaled .^ (2m_order))
 end
 
-function spectrum(u, ifft_plan, T)
-    T * sqrt(2/pi) * fftshift(ifft_plan(u))
+function spectrum(u, U, ifft_plan!, T)
+    n = length(u)
+    BLAS.blascopy!(n, u, 1, U, 1)
+    ifft_plan!(U)
+    fftshift!(U)
+    BLAS.scal!(n, T * sqrt(2/pi), U, 1)
 end
+
+function fftshift!(u)
+    n = length(u)
+    if mod(n, 2) != 0 
+        throw(ArgumentError("fftshift! is defined only for even-length arrays"))
+    end
+
+    shift = div(n, 2)
+    for i = 1:shift
+        u[i], u[shift+i] = u[shift+i], u[i]
+    end
+end
+

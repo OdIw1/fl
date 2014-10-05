@@ -1,8 +1,8 @@
 # split-step Fourier method
 
-function ssfm(u, t_grid, w_grid,
-              fft_plan!, ifft_plan!,
-              L, h, alpha, beta, gamma, steep, t_raman)
+function ssfm(u, L, h, t_grid, w_grid,
+              alpha, beta, gamma, steep, t_raman,
+              fft_plan!, ifft_plan!)
 
     nz = int(L/h)
     dt = t_grid[end] - t_grid[end - 1]
@@ -19,7 +19,7 @@ function ssfm(u, t_grid, w_grid,
     # scheme 1/2D => [N, D] loop, -1/2D
     D!(u, disp_half, fft_plan!, ifft_plan!)
     @profile @time for i in 1:nz
-        N_ssfm!(u, _uabs2, _duabs2, _du, h, dt, gamma, steep, t_raman)
+        N_ssfm_raman!(u, _uabs2, _duabs2, _du, h, dt, gamma, steep, t_raman)
         D!(u, disp_full, fft_plan!, ifft_plan!)
     end
     D!(u, disp_minus_half, fft_plan!, ifft_plan!)
@@ -31,7 +31,7 @@ function D!(u, disp, fft_plan!, ifft_plan!)
     fft_plan!(u)
 end
 
-function N_ssfm!(u, _uabs2, _duabs2, _du, h, dt, gamma, steep, t_raman)
+function N_ssfm_raman!(u, _uabs2, _duabs2, _du, h, dt, gamma, steep, t_raman)
     n = length(u)
     map!(Abs2Fun(), _uabs2, u)
     BLAS.blascopy!(length(u), _uabs2, 1, _duabs2, 1)
