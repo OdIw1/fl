@@ -4,14 +4,17 @@
                      alpha, beta, gamma, steep, t_raman,
                      fft_plan!, ifft_plan!, nt_plot=2^7, nz_plot=2^7)
     z = 0.
+    n = length(u)
+    T = (t_grid[end] - t_grid[1]) / 2
+    dt = (t_grid[end] - t_grid[1]) / (length(t_grid)-1)
+
     n_steps = n_steps_rejected = 0
     steps = Float64[]
     err_prev = 1.
-    dt = (t_grid[end] - t_grid[1]) / (length(t_grid)-1)
 
     ue_ = similar(u, Float64)
     $([:($a = similar(u)) for a in 
-        [:uf, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :ue_cplx_,
+        [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :ue_cplx_,
          :u_full, :u_half, :u_half2]]...)
 
     N! = let _uabs2 = _uabs2, _du = _du, 
@@ -34,8 +37,13 @@
     dz_plot = L / (nt_plot-1)
     t_plot_ind = round(linspace(1, length(t_grid), nt_plot))
     u_plot = zeros(Complex{Float64}, nz_plot, nt_plot)
+    U_plot = zeros(u_plot)
     i_plot = 1
-    do_plot && (u_plot[i_plot,:] = u[t_plot_ind])
+    if do_plot 
+        u_plot[i_plot,:] = u[t_plot_ind]
+        spectrum!(u, U, ifft_plan!, T)
+        U_plot[i_plot,:] = U[t_plot_ind]
+    end 
 
     @time @profile while z < L
         # full step
@@ -73,11 +81,13 @@
                 println("step: $n_steps, z: $z")
                 i_plot += 1
                 u_plot[i_plot, :] = u[t_plot_ind]
+                spectrum!(u, U, ifft_plan!, T)
+                U_plot[i_plot,:] = U[t_plot_ind]                
             end
         end
     end
 
-    return (u, n_steps, n_steps_rejected, steps, u_plot)
+    return (u, u_plot, U_plot, n_steps, n_steps_rejected, steps)
 end
 
 function dispersion_exponent(w, alpha, beta...)

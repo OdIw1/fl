@@ -26,27 +26,30 @@ function x()
     E0 = sum(abs2(u0)) * (t[end] - t[end-1])
 
     u = copy(u0)
-    uf = similar(u0)
+    u1 = similar(u0)
     U0 = similar(u0)
-    Uf = similar(u0)
-    fft_plan! = plan_fft!(uf, (1,), FFTW.MEASURE)
-    ifft_plan! = plan_ifft!(uf, (1,), FFTW.MEASURE)
+    U1 = similar(u0)
+    fft_plan! = plan_fft!(u1, (1,), FFTW.MEASURE)
+    ifft_plan! = plan_ifft!(u1, (1,), FFTW.MEASURE)
 
-    spectrum(u0, U0, ifft_plan!, T)
-    fwrite("u0.tsv", u0)
-    fwrite("U0.tsv", U0)
+    spectrum!(u0, U0, ifft_plan!, T)
+    
+    outdir = "out"
+    fwrite(joinpath(outdir, "u0.tsv"), u0)
+    fwrite(joinpath(outdir, "U0.tsv"), U0)
 
-    (u, n_steps, n_steps_rejected, steps, u_plot) = 
+    (u1, u_plot, U_plot, n_steps, n_steps_rejected, steps) = 
         rk4ip(u, L, 1.e-4L, t, w, alpha, beta, gamma, steep, t_raman,
               fft_plan!, ifft_plan!)
-    fwrite("u_plot.tsv", u_plot)
-    fwrite("steps.tsv", steps)
+    fwrite(joinpath(outdir, "u_plot.tsv"), u_plot)
+    fwrite(joinpath(outdir, "U_plot.tsv"), U_plot)  
+    fwrite(joinpath(outdir, "steps.tsv"), steps)
 
     # ssfm(u, L, L/2^14, t, w, alpha, beta, gamma, steep, t_raman, fft_plan!, ifft_plan!)
 
-    spectrum(u, Uf, ifft_plan!, T)
-    fwrite("uf.tsv", u)
-    fwrite("Uf.tsv", Uf)
+    spectrum!(u1, U1, ifft_plan!, T)
+    fwrite(joinpath(outdir, "u1.tsv"), u1)
+    fwrite(joinpath(outdir, "U1.tsv"), U1)
 
     Ef = sum(abs2(u)) * (t[end] - t[end-1])
     @show (E0, Ef)

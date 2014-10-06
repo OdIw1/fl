@@ -36,7 +36,13 @@ function gaussian_pulse(m_order, T0, P0, C0, t::Vector, t_offset=0)
     sqrt(P0) * exp(-0.5(1 + 1im * C0) * t_scaled .^ (2m_order))
 end
 
-function spectrum(u, U, ifft_plan!, T)
+function spectrum(u, ifft_plan!, T)
+    U = similar(u)
+    spectrum!(u, U, ifft_plan!, T)
+    return U
+end
+
+function spectrum!(u, U, ifft_plan!, T)
     n = length(u)
     BLAS.blascopy!(n, u, 1, U, 1)
     ifft_plan!(U)
