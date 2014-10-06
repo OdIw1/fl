@@ -11,7 +11,7 @@
 
     ue_ = similar(u, Float64)
     $([:($a = similar(u)) for a in 
-        [:uf, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du,
+        [:uf, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :ue_cplx_,
          :u_full, :u_half, :u_half2]]...)
 
     N! = let _uabs2 = _uabs2, _du = _du, 
@@ -25,7 +25,7 @@
         end
     end
 
-    d_exp = dispersion_exponent(w_grid, alpha, beta)
+    d_exp = dispersion_exponent(w_grid, alpha, beta...)
     disp_full = exp(h * d_exp)
     disp_half = exp(h/2. * d_exp)
 
@@ -50,7 +50,7 @@
                     fft_plan!, ifft_plan!,
                     _u1, _k1, _k2, _k3, _k4)
         
-        err = integration_error(u_full, u_half2, ue_)
+        err = integration_error_global(u_full, u_half2, ue_cplx_)
         if err > 1
             n_steps_rejected += 1
             h *= scale_step_fail(err, err_prev)
@@ -80,10 +80,15 @@
     return (u, n_steps, n_steps_rejected, steps, u_plot)
 end
 
-function dispersion_exponent(w, alpha, beta)
+function dispersion_exponent(w, alpha, beta...)
     # pay attention to the order of Fourier transforms, that determine
     # the sign of differentiation operator
-    -alpha/2 + 1im/2 * beta[1] * w.^2 + 1im/6 * beta[2] * w.^3 
+    # -alpha/2 + 1im/2 * beta[1] * w.^2 + 1im/6 * beta[2] * w.^3 + ...
+    res = - alpha/2 + zeros(Complex{Float64}, length(w))
+    for k in 1:length(beta)
+        res += (1.im / factorial(k+1) * beta[k]) * w.^(k+1)
+    end
+    return res
 end
 
 function rk4ip_step!(u, uf, h, disp, N!, fft_plan!, ifft_plan!,
@@ -169,23 +174,6 @@ function N_raman_steep!(u, h, dt, gamma, t_raman, steep, _uabs2, _du)
 
     k = 1im * h * gamma
     @devec u[:] = k .* u .* _uabs2
-end
-
-function df!(u, du, dx)
-    # du = d(u)/dx, u and du MUST be different arrays
-    du[1] = (u[2] - u[end]) / (2dx)
-    du[end] = (u[1] - u[end-1]) / (2dx)
-    @simd for i in 2:(length(u)-1)
-        @inbounds du[i] = (u[i+1] - u[i-1]) / (2dx)
-    end
-end
-
-function integration_error(u1, u2, ue_, atol=1.e-6, rtol=1.e-6)
-    @simd for i in 1:length(u1)
-        @inbounds ue_[i] = abs(u1[i] - u2[i]) / (atol + rtol * max(abs(u1[i]), abs(u2[i])))
-    end
-    maximum(ue_)
-    # maximum(abs((abs(u1 - u2) ./ error_scale)));
 end
 
 function PI_control_factor(err, err_prev, ae=0.7, be=0.4)

@@ -26,9 +26,9 @@ function x()
     E0 = sum(abs2(u0)) * (t[end] - t[end-1])
 
     u = copy(u0)
-    uf = zeros(u0)
-    U0 = copy(u0)
-    Uf = copy(u0)
+    uf = similar(u0)
+    U0 = similar(u0)
+    Uf = similar(u0)
     fft_plan! = plan_fft!(uf, (1,), FFTW.MEASURE)
     ifft_plan! = plan_ifft!(uf, (1,), FFTW.MEASURE)
 
@@ -37,7 +37,7 @@ function x()
     fwrite("U0.tsv", U0)
 
     (u, n_steps, n_steps_rejected, steps, u_plot) = 
-        rk4ip(u, L, L/2^12, t, w, alpha, beta, gamma, steep, t_raman,
+        rk4ip(u, L, 1.e-4L, t, w, alpha, beta, gamma, steep, t_raman,
               fft_plan!, ifft_plan!)
     fwrite("u_plot.tsv", u_plot)
     fwrite("steps.tsv", steps)
