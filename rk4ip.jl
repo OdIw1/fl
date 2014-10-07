@@ -2,7 +2,7 @@
 
 @eval function rk4ip(u, L, h, t_grid, w_grid, 
                      alpha, beta, gamma, steep, t_raman,
-                     fft_plan!, ifft_plan!, nt_plot=2^7, nz_plot=2^7)
+                     fft_plan!, ifft_plan!, nt_plot=2^8, nz_plot=2^8)
     z = 0.
     n = length(u)
     T = (t_grid[end] - t_grid[1]) / 2
@@ -29,8 +29,8 @@
     end
 
     d_exp = dispersion_exponent(w_grid, alpha, beta)
-    disp_full = exp(h * d_exp)
-    disp_half = exp(h/2. * d_exp)
+    disp_full = exp(h/2 * d_exp)
+    disp_half = exp(h/4. * d_exp)
 
     # prepare plotting
     do_plot = (nt_plot != 0 && nz_plot !=0)
@@ -62,9 +62,10 @@
         if err > 1
             n_steps_rejected += 1
             h *= scale_step_fail(err, err_prev)
-            h_ = h/2
-            @devec disp_full[:] = exp(h .* d_exp)
-            @devec disp_half[:] = exp(h_ .* d_exp)
+            hd2 = h/2
+            hd4 = h/4
+            @devec disp_full[:] = exp(hd2 .* d_exp)
+            @devec disp_half[:] = exp(hd4 .* d_exp)
         else
             z += h
             n_steps += 1
@@ -72,9 +73,10 @@
             mod(n_steps, 100) == 0 && @show (z, h)             
             h *= scale_step_ok(err, err_prev)
             h = min(L - z, h)
-            h_ = h/2
-            @devec disp_full[:] = exp(h .* d_exp)
-            @devec disp_half[:] = exp(h_ .* d_exp)
+            hd2 = h/2
+            hd4 = h/4
+            @devec disp_full[:] = exp(hd2 .* d_exp)
+            @devec disp_half[:] = exp(hd4 .* d_exp)
 
             err_prev = err
             BLAS.blascopy!(length(u), u_half2, 1, u, 1)

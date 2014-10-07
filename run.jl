@@ -25,19 +25,19 @@ function run5_23()
     run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
 end
 
-function run_soliton2nd()
+function run_soliton(N=1)
     n = 2^14
-    T_window = 100
+    T_window = 20
     alpha = 0.
-    beta = 1.e-26
+    beta2 = -1.e-26
     gamma = 1e-2
     T0 = 56.7e-15
-    P0 = 1.24e3
+    P0 = N^2 * abs(beta2) / (gamma * T0^2)
     C0 = 0.
     steep = 0.
     t_raman = 0. # 2.80e-15
-    L = 10.
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
+    L = pi / 2 * T0^2 / abs(beta2)
+    run(n, T_window, alpha, beta2, gamma, t_raman, steep, L, T0, P0, C0)
 end
 
 function run_Heidt()
