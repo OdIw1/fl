@@ -68,9 +68,8 @@ function run_Heidt()
 end
 
 function run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
-    L_N, L_D = lnd(T0, P0, gamma, beta)
-    soliton_order = map(x -> sqrt(x / L_N), L_D)
-    @show (L_N, L_D)
+    ln, ld, soliton_order = pulse_propagation_params(T0, P0, gamma, beta...)
+    @show ln, ld
     @show soliton_order
 
     FFTW.set_num_threads(1)
@@ -93,19 +92,23 @@ function run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
     
     # add directory creation    
     outdir = "out"
-    fwrite(joinpath(outdir, "u0.tsv"), u0)
-    fwrite(joinpath(outdir, "U0.tsv"), U0)
+    fwrite(joinpath(outdir, "u0.tsv"), abs2(u0))
+    fwrite(joinpath(outdir, "U0.tsv"), abs2(U0))
 
     (u1, u_plot, U_plot, n_steps, n_steps_rejected, steps) = 
         rk4ip(u, L, 1.e-10L, t, w, alpha, beta, gamma, steep, t_raman,
               fft_plan!, ifft_plan!)
 
-    fwrite(joinpath(outdir, "u_plot.tsv"), u_plot)
-    fwrite(joinpath(outdir, "U_plot.tsv"), U_plot)  
-    fwrite(joinpath(outdir, "steps.tsv"), steps)
+    fwrite(joinpath(outdir, "u_log_plot.tsv"), clamp_log_plot(u_plot))
+    fwrite(joinpath(outdir, "U_log_plot.tsv"), clamp_log_plot(U_plot))
+    fwrite(joinpath(outdir, "u_plot.tsv"), clamp_plot(u_plot))
+    fwrite(joinpath(outdir, "U_plot.tsv"), clamp_plot(U_plot))  
+
     spectrum!(u1, U1, ifft_plan!, T)
-    fwrite(joinpath(outdir, "u1.tsv"), u1)
-    fwrite(joinpath(outdir, "U1.tsv"), U1)
+    fwrite(joinpath(outdir, "u1.tsv"), abs2(u1))
+    fwrite(joinpath(outdir, "U1.tsv"), abs2(U1))
+
+    fwrite(joinpath(outdir, "steps.tsv"), steps)
 
     Ef = sum(abs2(u)) * (t[end] - t[end-1])
     @show (E0, Ef)

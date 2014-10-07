@@ -1,23 +1,21 @@
-function fwrite(fname, data)
-    touch(fname)
-    f = open(fname, "w+")
-    writedlm(f, data)
-    close(f)
-end
-
-function lnd(T0, P0, gamma, beta::Number)
-# characteristic nonlinear and dispersive lenghts
-# beta can be a numer or an iterable
-    lnd(T0, P0, gamma, [beta])
-end
-
-function lnd(T0, P0, gamma, beta)
-    L_N = 1. / (gamma * P0)
-    L_D = Float64[]
-    for (i, b) in enumerate(beta)
-        push!(L_D, T0^(i+1) / abs(b))
+function beta_pskm_to_sm(beta...)
+    b = zeros(Float64, length(beta))
+    for k = 1:length(beta)
+        b[k] = beta[k] * 1e-12^(k+1) / 1e-3
     end
-    L_N, L_D
+    b
+end
+
+function pulse_propagation_params(T0, P0, gamma, beta...)
+    ld = zeros(Float64, length(beta))
+    soliton_order = zeros(ld)
+
+    ln = 1. / (gamma * P0)
+    for k = 1:length(beta)
+        ld[k] = T0^(k+1) / abs(beta[k])
+        soliton_order[k] = sqrt(ld[k] / ln)
+    end
+    ln, ld, soliton_order
 end
 
 function t_grid(n, T)
@@ -43,18 +41,11 @@ function gaussian_pulse(m_order, T0, P0, C0, t::Vector, t_offset=0)
     sqrt(P0) * exp(-0.5(1 + 1im * C0) * t_scaled .^ (2m_order))
 end
 
-function beta_pskm_to_sm(beta...)
-    b = Float64[]
-    for k = 1:length(beta)
-        push!(b, beta[k] * (1e-12)^(k+1) / 1e-3)
-    end
-    return b
-end
 
 function spectrum(u, ifft_plan!, T)
     U = similar(u)
     spectrum!(u, U, ifft_plan!, T)
-    return U
+    U
 end
 
 function spectrum!(u, U, ifft_plan!, T)
@@ -100,11 +91,3 @@ function integration_error_global(u1, u2, ue_cplx_, atol=1.e-6, rtol=1.e-6)
     BLAS.axpy!(n, -1. + 0im, u1, 1, ue_cplx_, 1)
     BLAS.nrm2(n, ue_cplx_, 1) / (atol + rtol * BLAS.nrm2(n, u2, 1))
 end
-
-function clamp_plot(u)
-    m = maximum(abs(u))
-end
-
-
-
-
