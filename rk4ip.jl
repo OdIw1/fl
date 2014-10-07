@@ -75,6 +75,7 @@
             h_ = h/2
             @devec disp_full[:] = exp(h .* d_exp)
             @devec disp_half[:] = exp(h_ .* d_exp)
+
             err_prev = err
             BLAS.blascopy!(length(u), u_half2, 1, u, 1)
 
@@ -172,19 +173,18 @@ function N_raman_steep!(u, h, dt, gamma, t_raman, steep, _uabs2, _du)
     # steep = 1.im / w0
     n = length(u)
 
-    # _uabs2 = |u|^2 + (steep - t_raman) * d(|u|^2)/dt
+    # _uabs2 = |u|^2 + (steep - t_raman) * 2Re[conj(u) * d(u)/dt] + steep[conj(u) * d(u)/dt]
     map!(Abs2Fun(), _uabs2, u)
-    df!(_uabs2, _du, dt)
-    BLAS.axpy!(n, steep - t_raman , _du, 1, _uabs2, 1)
-
     # _du = d(u)/dt * conj(u)
     df!(u, _du, dt)
     @simd for i = 1:n
         @inbounds _du[i] = _du[i] * conj(u[i])
     end
-
-    # _uabs2 += steep * du
+    
     BLAS.axpy!(n, steep, _du, 1, _uabs2, 1)
+    @simd for i = 1:n
+        @inbounds _uabs2[i] += (steep - t_raman) * 2.real(_du[i])
+    end
 
     k = 1im * h * gamma
     @devec u[:] = k .* u .* _uabs2
