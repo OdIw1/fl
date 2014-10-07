@@ -1,3 +1,10 @@
+function fwrite(fname, data)
+    touch(fname)
+    f = open(fname, "w+")
+    writedlm(f, data)
+    close(f)
+end
+
 function lnd(T0, P0, gamma, beta::Number)
 # characteristic nonlinear and dispersive lenghts
 # beta can be a numer or an iterable
@@ -34,6 +41,14 @@ end
 function gaussian_pulse(m_order, T0, P0, C0, t::Vector, t_offset=0)
     t_scaled = (t - t_offset) / T0
     sqrt(P0) * exp(-0.5(1 + 1im * C0) * t_scaled .^ (2m_order))
+end
+
+function beta_pskm_to_sm(beta...)
+    b = Float64[]
+    for k = 1:length(beta)
+        push!(b, beta[k] * (1e-12)^(k+1) / 1e-3)
+    end
+    return b
 end
 
 function spectrum(u, ifft_plan!, T)
@@ -79,12 +94,17 @@ function integration_error_local(u1, u2, ue_, atol=1.e-6, rtol=1.e-6)
     # maximum(abs((abs(u1 - u2) ./ error_scale)));
 end
 
-function integration_error_global(u1, u2, ue_cplx_, atol=1.e-8, rtol=1.e-8)
+function integration_error_global(u1, u2, ue_cplx_, atol=1.e-6, rtol=1.e-6)
     n = length(u1)
     BLAS.blascopy!(n, u2, 1, ue_cplx_, 1)
     BLAS.axpy!(n, -1. + 0im, u1, 1, ue_cplx_, 1)
     BLAS.nrm2(n, ue_cplx_, 1) / (atol + rtol * BLAS.nrm2(n, u2, 1))
 end
+
+function clamp_plot(u)
+    m = maximum(abs(u))
+end
+
 
 
 

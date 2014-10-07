@@ -28,7 +28,7 @@
         end
     end
 
-    d_exp = dispersion_exponent(w_grid, alpha, beta...)
+    d_exp = dispersion_exponent(w_grid, alpha, beta)
     disp_full = exp(h * d_exp)
     disp_half = exp(h/2. * d_exp)
 
@@ -68,7 +68,8 @@
         else
             z += h
             n_steps += 1
-            push!(steps, h)             
+            push!(steps, h)
+            mod(n_steps, 100) == 0 && @show (z, h)             
             h *= scale_step_ok(err, err_prev)
             h = min(L - z, h)
             h_ = h/2
@@ -90,7 +91,7 @@
     return (u, u_plot, U_plot, n_steps, n_steps_rejected, steps)
 end
 
-function dispersion_exponent(w, alpha, beta...)
+function dispersion_exponent(w, alpha, beta)
     # pay attention to the order of Fourier transforms, that determine
     # the sign of differentiation operator
     # -alpha/2 + 1im/2 * beta[1] * w.^2 + 1im/6 * beta[2] * w.^3 + ...
@@ -168,19 +169,22 @@ function N_raman!(u, h, dt, gamma, t_raman, _uabs2, _du)
 end
 
 function N_raman_steep!(u, h, dt, gamma, t_raman, steep, _uabs2, _du)
+    # steep = 1.im / w0
     n = length(u)
 
-    # _uabs2 = |u|^2 + (1im*steep - t_raman) * d(|u|^2)/dt
+    # _uabs2 = |u|^2 + (steep - t_raman) * d(|u|^2)/dt
     map!(Abs2Fun(), _uabs2, u)
     df!(_uabs2, _du, dt)
-    BLAS.axpy!(n, 1.im*steep - t_raman , _du, 1, _uabs2, 1)
+    BLAS.axpy!(n, steep - t_raman , _du, 1, _uabs2, 1)
 
     # _du = d(u)/dt * conj(u)
     df!(u, _du, dt)
-    @devec _du[:] = _du .* u
+    @simd for i = 1:n
+        @inbounds _du[i] = _du[i] * conj(u[i])
+    end
 
-    # _uabs2 += 1.im * steep * du
-    BLAS.axpy!(n, 1.im * steep, _du, 1, _uabs2, 1)
+    # _uabs2 += steep * du
+    BLAS.axpy!(n, steep, _du, 1, _uabs2, 1)
 
     k = 1im * h * gamma
     @devec u[:] = k .* u .* _uabs2
