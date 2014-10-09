@@ -1,7 +1,15 @@
 function beta_pskm_to_sm(beta...)
     b = zeros(Float64, length(beta))
     for k = 1:length(beta)
-        b[k] = beta[k] * 1e-12^(k+1) / 1e-3
+        b[k] = beta[k] * (1e-12)^(k+1) * 1.e-3
+    end
+    b
+end
+
+function beta_psm_to_sm(beta...)
+    b = zeros(Float64, length(beta))
+    for k = 1:length(beta)
+        b[k] = beta[k] * (1e-12)^(k+1)
     end
     b
 end
@@ -87,7 +95,7 @@ function integration_error_local{T1<:Complex, T2<:Real}(u1::Vector{T1}, u2::Vect
 end
 
 function integration_error_global{T<:Complex}(u1::Vector{T}, u2::Vector{T},
-                                              ue_cplx_::Vector{T}, atol=1.e-6, rtol=1.e-6)
+                                              ue_cplx_::Vector{T}, atol=1.e-5, rtol=1.e-5)
     n = length(u1)
     BLAS.blascopy!(n, u2, 1, ue_cplx_, 1)
     BLAS.axpy!(n, -1. + 0im, u1, 1, ue_cplx_, 1)

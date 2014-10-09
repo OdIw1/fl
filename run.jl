@@ -1,73 +1,4 @@
-function run5_23()
-    n = 2^14
-    T_window = 50
-    alpha = 0.
-    # b2 = -11.830
-    # b3 = 8.1038e-2
-    # b4 = -9.5205e-5
-    # b5 = 2.0737e-7
-    # b6 = -5.3943e-10
-    # b7 = 1.3486e-12
-    # b8 = -2.5495e-15
-    # b9 = 3.0524e-18
-    # b10 = -1.7140e-21
-    # beta_pskm = (b2, b3, b4, b5, b6, b7, b8, b9, b10)
-    # beta = beta_pskm_to_sm(beta_pskm...)
-    beta = (-5.92e-20, 2.98e-34)
-    gamma = 1.
-    T0 = 28.0e-15
-    P0 = 3.01e8
-    C0 = 0.
-    wl = 2.64e-6
-    steep = 1.im / (2pi * 3e8 / wl)
-    t_raman = 2.80e-15
-    L = 5.3e-8
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
-end
-
-function run_soliton(N=1)
-    n = 2^14
-    T_window = 20
-    alpha = 0.
-    beta2 = -1.e-26
-    gamma = 1e-2
-    T0 = 56.7e-15
-    P0 = N^2 * abs(beta2) / (gamma * T0^2)
-    C0 = 0.
-    steep = 0.
-    t_raman = 0. # 2.80e-15
-    L = pi / 2 * T0^2 / abs(beta2)
-    run(n, T_window, alpha, beta2, gamma, t_raman, steep, L, T0, P0, C0)
-end
-
-function run_Heidt()
-    n = 2^13
-    T_window = 50
-
-    alpha = 0.
-    b2 = -11.830
-    b3 = 8.1038e-2
-    b4 = -9.5205e-5
-    b5 = 2.0737e-7
-    b6 = -5.3943e-10
-    b7 = 1.3486e-12
-    b8 = -2.5495e-15
-    b9 = 3.0524e-18
-    b10 = -1.7140e-21
-    beta = beta_pskm_to_sm(b2, b3)
-    gamma = 0.11
-
-    T0 = 34.0e-15
-    P0 = 1.e10
-    C0 = 0.
-    
-    steep = 1.im * 0.56e-15    
-    t_raman = 2.80e-15
-    L = 15e-2
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
-end
-
-function run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
+function run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, shape=0)
     ln, ld, soliton_order = pulse_propagation_params(T0, P0, gamma, beta...)
     @show ln, ld
     @show soliton_order
@@ -78,7 +9,7 @@ function run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
     T = T_window * T0
     t = t_grid(n, T)
     w = w_grid(n, T)
-    u0 = secant_pulse(T0, P0, C0, t)
+    u0 = shape == 0. ? secant_pulse(T0, P0, C0, t) : gaussian_pulse(shape, T0, P0, C0, t)
     E0 = sum(abs2(u0)) * (t[end] - t[end-1])
 
     u = copy(u0)
@@ -111,6 +42,6 @@ function run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
     fwrite(joinpath(outdir, "steps.tsv"), steps)
 
     Ef = sum(abs2(u)) * (t[end] - t[end-1])
-    @show (E0, Ef)
+    @show (E0, Ef, E0/Ef - 1)
     @show (n_steps, n_steps_rejected)
 end

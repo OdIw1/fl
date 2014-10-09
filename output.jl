@@ -16,7 +16,7 @@ function clampl{T<:Complex}(x::T, lo::T)
     ax < alo ? alo : ax
 end
 
-function clampl(x, lo)
+function clampl{T<:Real}(x::T, lo::T)
     x < lo ? lo : x
 end
 
@@ -24,7 +24,7 @@ type ClamplFun <: Functor{2} end
 NumericExtensions.evaluate(::ClamplFun, x, y) = clampl(x, y)
 
 function clamp_plot(u, threshold=1.e-4)
-    uabs = abs(u)
+    uabs = abs2(u)
     m = threshold * maximum(uabs)
     map1!(ClamplFun(), uabs, m)
     return uabs  

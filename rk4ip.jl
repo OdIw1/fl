@@ -2,7 +2,7 @@
 
 @eval function rk4ip(u, L, h, t_grid, w_grid, 
                      alpha, beta, gamma, steep, t_raman,
-                     fft_plan!, ifft_plan!, nt_plot=2^8, nz_plot=2^8)
+                     fft_plan!, ifft_plan!, nt_plot=2^9, nz_plot=2^9)
     z = 0.
     n = length(u)
     T = (t_grid[end] - t_grid[1]) / 2
@@ -35,7 +35,7 @@
     # prepare plotting
     do_plot = (nt_plot != 0 && nz_plot !=0)
     dz_plot = L / (nt_plot-1)
-    t_plot_ind = round(linspace(1, length(t_grid), nt_plot))
+    t_plot_ind = round(linspace(1, n, nt_plot))
     u_plot = zeros(Complex{Float64}, nz_plot, nt_plot)
     U_plot = zeros(u_plot)
     i_plot = 1
@@ -70,7 +70,7 @@
             z += h
             n_steps += 1
             push!(steps, h)
-            mod(n_steps, 100) == 0 && @show (z, h)             
+            mod(n_steps, 100) == 0 && @show (n_steps, z, h)             
             h *= scale_step_ok(err, err_prev)
             h = min(L - z, h)
             hd2 = h/2
@@ -82,7 +82,7 @@
             BLAS.blascopy!(length(u), u_half2, 1, u, 1)
 
             if do_plot && z >= i_plot * dz_plot
-                println("step: $n_steps, z: $z")
+                # println("step: $n_steps, z: $z")
                 i_plot += 1
                 u_plot[i_plot, :] = u[t_plot_ind]
                 spectrum!(u, U, ifft_plan!, T)
@@ -95,12 +95,12 @@
 end
 
 function dispersion_exponent(w, alpha, beta)
-    # pay attention to the order of Fourier transforms, that determine
+    # pay attention to the order of Fourier transforms that determine
     # the sign of differentiation operator
     # -alpha/2 + 1im/2 * beta[1] * w.^2 + 1im/6 * beta[2] * w.^3 + ...
     res = - alpha/2 + zeros(Complex{Float64}, length(w))
     for k in 1:length(beta)
-        res += (1.im / factorial(k+1) * beta[k]) * w.^(k+1)
+        res += (1.im / factorial(k+1) * beta[k]) * w.^(k+1) # * (-1)^(k+1)
     end
     return res
 end
