@@ -1,3 +1,10 @@
+macro closure(name, fun, closure_args, args...)
+    quote
+        local $name
+        $(name) = ($(closure_args))->$(fun)($(args...))
+    end
+end
+
 function beta_pskm_to_sm(beta...)
     b = zeros(Float64, length(beta))
     for k = 1:length(beta)

@@ -42,16 +42,16 @@
 
     @time @profile while z < L
         # full step
-        rk4ip_step!(u, u_full, h, disp_full, N!, 
+        rk4ip_step!(uX, uY, u_fullX, u_fullY, h, disp_full, N!, 
                     fft_plan!, ifft_plan!,
-                    _u1, _k1, _k2, _k3, _k4)
+                    _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
         # 2 half-steps
         rk4ip_step!(u, u_half, h/2, disp_half, N!,
                     fft_plan!, ifft_plan!,
-                    _u1, _k1, _k2, _k3, _k4)
+                    _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
         rk4ip_step!(u_half, u_half2, h/2, disp_half, N!,
                     fft_plan!, ifft_plan!,
-                    _u1, _k1, _k2, _k3, _k4)
+                    _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
         
         err = integration_error_global(u_full, u_half2, ue_cplx_)
         if err > 1
@@ -116,8 +116,8 @@ function gain_saturated(uX, uY, dt, gain, saturation_energy)
     gain_saturated = 0.5gain / (1. + energy / saturation_energy)
 end
 
-function rk4ip_step!(uX, ufX, uY, ufY, h, disp, N!, fft_plan!, ifft_plan!,
-                     u1X, k1X, k2X, k3X, k4X, u1Y, k1Y, k2Y, k3Y, k4Y)
+function rk4ip_step!(uX, uY, ufX, ufY, h, disp, N!, fft_plan!, ifft_plan!,
+                     u1X, u1Y, k1X, k1Y, k2X, k2Y, k3X, k3Y, k4X, k4Y)
     n = length(u)
     BLAS.blascopy!(n, uX, 1, u1X, 1);               BLAS.blascopy!(n, uY, 1, u1Y, 1)
     BLAS.blascopy!(n, uX, 1, k1X, 1);               BLAS.blascopy!(n, uY, 1, k1Y, 1)
