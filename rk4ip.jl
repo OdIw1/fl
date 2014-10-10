@@ -14,7 +14,7 @@
 
     ue_ = similar(u, Float64)
     $([:($a = similar(u)) for a in 
-        [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :ue_cplx_,
+        [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx,
          :u_full, :u_half, :u_half2]]...)
 
     N! = let _uabs2 = _uabs2, _du = _du, 
@@ -58,7 +58,7 @@
                     fft_plan!, ifft_plan!,
                     _u1, _k1, _k2, _k3, _k4)
         
-        err = integration_error_global(u_full, u_half2, ue_cplx_)
+        err = integration_error_global(u_full, u_half2, _ue_cplx)
         if err > 1
             n_steps_rejected += 1
             h *= scale_step_fail(err, err_prev)
