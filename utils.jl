@@ -1,7 +1,15 @@
-macro closure(name, fun, closure_args, args...)
-    quote
-        local $name
-        $(name) = ($(closure_args))->$(fun)($(args...))
+macro closure1(name, fun, closure_arg, args...)
+    if closure_arg ∉ args
+        args_string = join([string(a) for a in args], ",")
+        msg = string("closure arg ", closure_arg, " not in ", args_string)
+        :(ArgumentError($msg))
+    else
+        quote
+            # global $name
+            $(esc(name)) = let $([:($(esc(a)) = $a) for a in args]...)
+                ($(closure_arg))->$(fun)($(args...))
+            end
+        end
     end
 end
 
