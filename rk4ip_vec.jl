@@ -3,7 +3,7 @@
 arrays_vec = [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_full, :u_half, :u_half2]
 
 @eval function rk4ip_vec!(uX, uY, L, h, t, w, 
-                     alpha, beta, gamma, g, g_bandwidth, saturation_energy,
+                     alpha, betha, dbetha, gamma, g, g_bandwidth, saturation_energy,
                      fft_plan!, ifft_plan!, nt_plot=2^9, nz_plot=2^9)
     z = 0.
     n = length(uX)
@@ -19,11 +19,11 @@ arrays_vec = [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_ful
     $([:($(symbol(string(a, 'Y'))) = similar(uX)) for a in 
         [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_full, :u_half, :u_half2]]...)
 
-    N! = let _uabs2A = _uabs2X, _uabs2B = _uabs2Y, dt = dt, gamma = gamma
-        (uA_, uB_, h_) -> N_simple!(uA_, uB_, h_, dt, gamma, _uabs2A, _uabs2B)
+    N! = let _uabs2X = _uabs2X, _uabs2Y = _uabs2Y, dt = dt, gamma = gamma
+        (uA_, uB_, h_, z_) -> N_simple!(uA_, uB_, h_, z_, dt, dbetha, gamma, _uabs2X, _uabs2Y)
     end
 
-    d_no_gain = dispersion_without_gain(w, alpha, beta)
+    d_no_gain = dispersion_without_gain(w, alpha, betha)
     g_spec = gain_spectral_factor(w, g_bandwidth)
     d_exp = similar(uX)
     dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, g, saturation_energy)
@@ -49,14 +49,14 @@ arrays_vec = [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_ful
 
     @time @profile while z < L
         # full step
-        rk4ip_step!(uX, uY, u_fullX, u_fullY, h, disp_full, N!, 
+        rk4ip_step!(uX, uY, u_fullX, u_fullY, h, disp_full, N!, z,
                     fft_plan!, ifft_plan!,
                     _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
         # 2 half-steps
-        rk4ip_step!(uX, uY, u_halfX, u_halfY, h/2, disp_half, N!,
+        rk4ip_step!(uX, uY, u_halfX, u_halfY, h/2, disp_half, N!, z,
                     fft_plan!, ifft_plan!,
                     _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
-        rk4ip_step!(u_halfX, u_halfY, u_half2X, u_half2Y, h/2, disp_half, N!,
+        rk4ip_step!(u_halfX, u_halfY, u_half2X, u_half2Y, h/2, disp_half, N!, z,
                     fft_plan!, ifft_plan!,
                     _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
         
@@ -107,13 +107,13 @@ function handle_plot_data!(i_plot, t_plot_ind, uX, uY, UX, UY,
     U_plotX[i_plot,:] = UX[t_plot_ind];                 U_plotY[i_plot,:] = UY[t_plot_ind]
 end
 
-function dispersion_without_gain(w, alpha, beta)
+function dispersion_without_gain(w, alpha, betha)
     # pay attention to the order of Fourier transforms that determine
     # the sign of differentiation operator
     res = zeros(Complex{Float64}, length(w))
     res -= alpha/2
-    for k in 1:length(beta)
-        res += (1.im / factorial(k+1) * beta[k]) * w.^(k+1) # * (-1)^(k+1)
+    for k in 1:length(betha)
+        res += (1.im / factorial(k+1) * betha[k]) * w.^(k+1) # * (-1)^(k+1)
     end
     return res
 end
@@ -134,7 +134,7 @@ function dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, g, saturation_ene
     @devec d_exp[:] = d_no_gain + g_sat .* g_spec
 end
 
-function rk4ip_step!(uX, uY, ufX, ufY, h, disp, N!, fft_plan!, ifft_plan!,
+function rk4ip_step!(uX, uY, ufX, ufY, h, disp, N!, z, fft_plan!, ifft_plan!,
                      u1X, u1Y, k1X, k1Y, k2X, k2Y, k3X, k3Y, k4X, k4Y)
     n = length(uX)
     BLAS.blascopy!(n, uX, 1, u1X, 1);               BLAS.blascopy!(n, uY, 1, u1Y, 1)
@@ -151,25 +151,25 @@ function rk4ip_step!(uX, uY, ufX, ufY, h, disp, N!, fft_plan!, ifft_plan!,
     BLAS.blascopy!(n, u1X, 1, ufX, 1);              BLAS.blascopy!(n, u1Y, 1, ufY, 1)
     
                             # k1 = FFT(D * IFFT(N(u)))
-                            N!(k1X, k1Y, h);
+                            N!(k1X, k1Y, h, z);
     ifft_plan!(k1X);                                ifft_plan!(k1Y)
     @devec k1X[:] = disp .* k1X;                    @devec k1Y[:] = disp .* k1Y
     fft_plan!(k1X);                                 fft_plan!(k1Y)
         
                             # k2 = N(u1 + k1/2)
     BLAS.axpy!(n, 0.5 + 0.im, k1X, 1, k2X, 1);      BLAS.axpy!(n, 0.5 + 0.im, k1Y, 1, k2Y, 1)
-                            N!(k2X, k2Y, h);
+                            N!(k2X, k2Y, h, z);
     
                             # k3 = N(u1 + k2/2)
     BLAS.axpy!(n, 0.5 + 0.im, k2X, 1, k3X, 1);      BLAS.axpy!(n, 0.5 + 0.im, k2Y, 1, k3Y, 1)
-                            N!(k3X, k3Y, h);
+                            N!(k3X, k3Y, h, z);
     
                             # k4 = N(FFT(D * IFFT(u1 + k3)))
     BLAS.axpy!(n, 1. + 0.im, k3X, 1, k4X, 1);       BLAS.axpy!(n, 1. + 0.im, k3Y, 1, k4Y, 1)
     ifft_plan!(k4X);                                ifft_plan!(k4Y)
     @devec k4X[:] = disp .* k4X;                    @devec k4Y[:] = disp .* k4Y           
     fft_plan!(k4X);                                 fft_plan!(k4Y)
-                            N!(k4X, k4Y, h);
+                            N!(k4X, k4Y, h, z);
     
                             # res = FFT(D * IFFW(u1 + 1/6 k1 + 1/3 (k2 + k3)) ) + 1/6 k4
     BLAS.axpy!(n, 1/6 + 0.im, k1X, 1, ufX, 1);      BLAS.axpy!(n, 1/6 + 0.im, k1Y, 1, ufY, 1)
@@ -181,16 +181,16 @@ function rk4ip_step!(uX, uY, ufX, ufY, h, disp, N!, fft_plan!, ifft_plan!,
     BLAS.axpy!(n, 1/6 + 0.im, k4X, 1, ufX, 1);      BLAS.axpy!(n, 1/6 + 0.im, k4Y, 1, ufY, 1)
 end
 
-function N_simple!(uA, uB, h, dt, gamma, _uabs2A, _uabs2B)
-    n = length(uA)
-    # maybe include this into loop too
-    map!(Abs2Fun(), _uabs2A, uA);                   map!(Abs2Fun(), _uabs2B, uB)                    
-
+function N_simple!(uX, uY, h, z, dt, dbetha, gamma, _uabs2X, _uabs2Y)
+    n = length(uX)
     k = 1im * h * gamma
+    phaseX = exp(-2im * dbetha * z);                phaseY = exp(2im * dbetha * z)    
+    # maybe include this into loop too
+    map!(Abs2Fun(), _uabs2X, uX);                   map!(Abs2Fun(), _uabs2Y, uY)                    
     for i = 1:n
-        @inbounds _uA = uA[i];                      _uB = uB[i]
-        @inbounds uA[i] = k * ((_uabs2A[i] + (2/3)*_uabs2B[i]) * _uA + (1/3)*(_uB*_uB)*conj(_uA))
-        @inbounds uB[i] = k * ((_uabs2B[i] + (2/3)*_uabs2A[i]) * _uB + (1/3)*(_uA*_uA)*conj(_uB))
+        @inbounds _uX = uX[i];                      _uY = uY[i]
+        @inbounds uX[i] = k * ((_uabs2X[i] + (2/3)*_uabs2Y[i])*_uX + (phaseX/3)*(_uY*_uY)*conj(_uX))
+        @inbounds uY[i] = k * ((_uabs2Y[i] + (2/3)*_uabs2X[i])*_uY + (phaseY/3)*(_uX*_uX)*conj(_uY))
     end
 end    
 
