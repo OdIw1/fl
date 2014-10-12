@@ -7,7 +7,7 @@ macro closure1(name, fun, closure_arg, args...)
         quote
             # global $name
             $(esc(name)) = let $([:($(esc(a)) = $a) for a in args]...)
-                ($(closure_arg))->$(fun)($(args...))
+                ($closure_arg)->$fun($(args...))
             end
         end
     end

@@ -23,13 +23,12 @@ function Agr5_23()
     steep = 1.im / (2pi * 3e8 / wl)
     t_raman = 2.80e-15
     L = 5.3e-8
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
+    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
 end
 
 function soliton(N=1)
     n = 2^14
     T0 = 56.7e-15
-    P0 = N^2 * abs(beta2) / (gamma * T0^2)
     C0 = 0.
     T_window = 20
 
@@ -38,8 +37,10 @@ function soliton(N=1)
     gamma = 1e-2
     steep = 0.
     t_raman = 0. # 2.80e-15
+
+    P0 = N^2 * abs(beta2) / (gamma * T0^2)
     L = pi / 2 * T0^2 / abs(beta2)
-    run(n, T_window, alpha, beta2, gamma, t_raman, steep, L, T0, P0, C0)
+    run_scalar(n, T_window, alpha, (beta2,), gamma, t_raman, steep, L, T0, P0, C0)
 end
 
 function Heidt()
@@ -65,7 +66,7 @@ function Heidt()
     t_raman = 2.80e-15
     
     L = 0.15
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
+    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
 end
 
 function Agr13_13()
@@ -88,7 +89,7 @@ function Agr13_13()
     t_raman = 2.80e-15
 
     L = 0.10
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
+    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0)
 end
 
 function Agr3_6(case=0)
@@ -107,7 +108,7 @@ function Agr3_6(case=0)
     t_raman = 0 # 2.80e-15
 
     L = 5 * T0^3 / abs(beta[2])
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
+    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
 end
 
 function Agr3_11(case=0)
@@ -126,7 +127,7 @@ function Agr3_11(case=0)
     t_raman = 0 # 2.80e-15
 
     L = 2.5e3
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
+    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
 end
 
 function Agr4_15(case=0)
@@ -145,7 +146,7 @@ function Agr4_15(case=0)
     t_raman = 0 # 2.80e-15
 
     L = 5 * T0^3 / abs(beta[2])
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
+    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
 end
 
 function Agr4_16(N=10)
@@ -164,7 +165,7 @@ function Agr4_16(N=10)
     t_raman = 0 # 2.80e-15
 
     L = 0.2 * T0^3 / abs(beta[2])
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
+    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
 end
 
 function Agr4_19(k=20)
@@ -181,7 +182,7 @@ function Agr4_19(k=20)
     t_raman = 0 # 2.80e-15
 
     L = k / (gamma * P0)
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
+    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
 end
 
 function Agr4_20(case=1.)
@@ -201,5 +202,5 @@ function Agr4_20(case=1.)
     
     L = 8 * T0^2/ abs(beta[1])
 
-    run(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
+    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
 end
