@@ -1,14 +1,13 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
 
-arrays_vec = [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_full, :u_half, :u_half2]
-
+# maybe i should introduce separate bethas for X and Y axes
 @eval function rk4ip_vec!(uX, uY, L, h, t, w, 
                      alpha, betha, dbetha, gamma, g, g_bandwidth, saturation_energy,
-                     fft_plan!, ifft_plan!, nt_plot=2^9, nz_plot=2^9)
+                     fft_plan!, ifft_plan!, nt_plot=2^8, nz_plot=2^8)
     z = 0.
     n = length(uX)
     T = (t[end] - t[1]) / 2
-    dt = (t[end] - t[1]) / (length(t)-1)
+    dt = (t[end] - t[1]) / (n - 1)
 
     n_steps = n_steps_rejected = 0
     steps = Float64[]
@@ -19,7 +18,7 @@ arrays_vec = [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_ful
     $([:($(symbol(string(a, 'Y'))) = similar(uX)) for a in 
         [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_full, :u_half, :u_half2]]...)
 
-    N! = let _uabs2X = _uabs2X, _uabs2Y = _uabs2Y, dt = dt, gamma = gamma
+    N! = let dt = dt, dbetha = dbetha, gamma = gamma, _uabs2X = _uabs2X, _uabs2Y = _uabs2Y
         (uA_, uB_, h_, z_) -> N_simple!(uA_, uB_, h_, z_, dt, dbetha, gamma, _uabs2X, _uabs2Y)
     end
 
@@ -40,7 +39,7 @@ arrays_vec = [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_ful
     handle_plot! = let t_plot_ind = t_plot_ind, uX = uX, uY = uY, UX = UX, UY = UY,
                        u_plotX = u_plotX, u_plotY = u_plotY, U_plotX = U_plotX, U_plotY = U_plotY,
                        ifft_plan! = ifft_plan!, T = T
-        (i_plot__) -> handle_plot_data!(i_plot__, t_plot_ind, uX, uY, UX, UY,
+        (i_plot_) -> handle_plot_data!(i_plot_, t_plot_ind, uX, uY, UX, UY,
                                         u_plotX, u_plotY, U_plotX, U_plotY, ifft_plan!, T)
     end
     
@@ -56,7 +55,7 @@ arrays_vec = [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_ful
         rk4ip_step!(uX, uY, u_halfX, u_halfY, h/2, disp_half, N!, z,
                     fft_plan!, ifft_plan!,
                     _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
-        rk4ip_step!(u_halfX, u_halfY, u_half2X, u_half2Y, h/2, disp_half, N!, z,
+        rk4ip_step!(u_halfX, u_halfY, u_half2X, u_half2Y, h/2, disp_half, N!, z + h/2,
                     fft_plan!, ifft_plan!,
                     _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
         
@@ -119,7 +118,7 @@ function dispersion_without_gain(w, alpha, betha)
 end
 
 function gain_spectral_factor(w, g_bandwidth)
-    1. ./ (1 + w.^2 / g_bandwidth^2)
+    1 ./ (1 + w.^2 / g_bandwidth^2)
 end
 
 function gain_saturated(uX, uY, dt, g, saturation_energy)
@@ -193,16 +192,3 @@ function N_simple!(uX, uY, h, z, dt, dbetha, gamma, _uabs2X, _uabs2Y)
         @inbounds uY[i] = k * ((_uabs2Y[i] + (2/3)*_uabs2X[i])*_uY + (phaseY/3)*(_uX*_uX)*conj(_uY))
     end
 end    
-
-
-function PI_control_factor(err, err_prev, ae=0.7, be=0.4)
-    err^(-ae/5) * err_prev^(be/5)
-end
-
-function scale_step_fail(err, err_prev, ae=0.7, be=0.4)
-    0.8max(1/5., PI_control_factor(err, err_prev, ae, be))
-end
-
-function scale_step_ok(err, err_prev, ae=0.7, be=0.4)
-    0.8min(10, PI_control_factor(err, err_prev, ae, be))
-end

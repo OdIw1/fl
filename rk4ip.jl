@@ -1,18 +1,17 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
 
 @eval function rk4ip(u, L, h, t_grid, w_grid, 
-                     alpha, beta, gamma, steep, t_raman,
+                     alpha, betha, gamma, steep, t_raman,
                      fft_plan!, ifft_plan!, nt_plot=2^9, nz_plot=2^9)
     z = 0.
     n = length(u)
     T = (t_grid[end] - t_grid[1]) / 2
-    dt = (t_grid[end] - t_grid[1]) / (length(t_grid)-1)
+    dt = (t_grid[end] - t_grid[1]) / (n - 1)
 
     n_steps = n_steps_rejected = 0
     steps = Float64[]
     err_prev = 1.
 
-    ue_ = similar(u, Float64)
     $([:($a = similar(u)) for a in 
         [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx,
          :u_full, :u_half, :u_half2]]...)
@@ -28,9 +27,9 @@
         end
     end
 
-    d_exp = dispersion_exponent(w_grid, alpha, beta)
+    d_exp = dispersion_exponent(w_grid, alpha, betha)
     disp_full = exp(h/2 * d_exp)
-    disp_half = exp(h/4. * d_exp)
+    disp_half = exp(h/4 * d_exp)
 
     # prepare plotting
     do_plot = (nt_plot != 0 && nz_plot !=0)
@@ -70,7 +69,8 @@
             z += h
             n_steps += 1
             push!(steps, h)
-            mod(n_steps, 100) == 0 && @show (n_steps, z, h)             
+            mod(n_steps, 100) == 0 && @show (n_steps, z, h)
+                         
             h *= scale_step_ok(err, err_prev)
             h = min(L - z, h)
             hd2 = h/2
@@ -94,13 +94,13 @@
     return (u, u_plot, U_plot, n_steps, n_steps_rejected, steps)
 end
 
-function dispersion_exponent(w, alpha, beta)
+function dispersion_exponent(w, alpha, betha)
     # pay attention to the order of Fourier transforms that determine
     # the sign of differentiation operator
-    # -alpha/2 + 1im/2 * beta[1] * w.^2 + 1im/6 * beta[2] * w.^3 + ...
+    # -alpha/2 + 1im/2 * betha[1] * w.^2 + 1im/6 * betha[2] * w.^3 + ...
     res = - alpha/2 + zeros(Complex{Float64}, length(w))
-    for k in 1:length(beta)
-        res += (1.im / factorial(k+1) * beta[k]) * w.^(k+1) # * (-1)^(k+1)
+    for k in 1:length(betha)
+        res += (1.im / factorial(k+1) * betha[k]) * w.^(k+1) # * (-1)^(k+1)
     end
     return res
 end

@@ -116,3 +116,15 @@ function integration_error_global{T<:Complex}(u1::Vector{T}, u2::Vector{T},
     BLAS.axpy!(n, -1. + 0im, u1, 1, ue_cplx_, 1)
     BLAS.nrm2(n, ue_cplx_, 1) / (atol + rtol * BLAS.nrm2(n, u2, 1))
 end
+
+function PI_control_factor(err, err_prev, ae=0.7, be=0.4)
+    err^(-ae/5) * err_prev^(be/5)
+end
+
+function scale_step_fail(err, err_prev, ae=0.7, be=0.4)
+    0.8max(1/5., PI_control_factor(err, err_prev, ae, be))
+end
+
+function scale_step_ok(err, err_prev, ae=0.7, be=0.4)
+    0.8min(10, PI_control_factor(err, err_prev, ae, be))
+end

@@ -1,5 +1,5 @@
-function run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, shape=0)
-    ln, ld, soliton_order = pulse_propagation_params(T0, P0, gamma, beta...)
+function run_scalar(n, T_window, alpha, betha, gamma, t_raman, steep, L, T0, P0, C0, shape=0)
+    ln, ld, soliton_order = pulse_propagation_params(T0, P0, gamma, betha...)
     @show ln, ld
     @show soliton_order
 
@@ -27,7 +27,7 @@ function run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, 
     fwrite(joinpath(outdir, "U0.tsv"), abs2(U0))
 
     (u1, u_plot, U_plot, n_steps, n_steps_rejected, steps) = 
-        rk4ip(u, L, 1.e-10L, t, w, alpha, beta, gamma, steep, t_raman,
+        rk4ip(u, L, 1.e-10L, t, w, alpha, betha, gamma, steep, t_raman,
               fft_plan!, ifft_plan!)
 
     fwrite(joinpath(outdir, "u_log_plot.tsv"), clamp_log_plot(u_plot))
@@ -47,8 +47,8 @@ function run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, 
 end
 
 
-function run_vec(n, T_window, alpha, beta, dbetha, gamma, L, T0, P0, C0, theta, shape=0)
-    ln, ld, soliton_order = pulse_propagation_params(T0, P0, gamma, beta...)
+function run_vec(n, T_window, alpha, betha, dbetha, gamma, L, T0, P0, C0, theta, shape=0)
+    ln, ld, soliton_order = pulse_propagation_params(T0, P0, gamma, betha...)
     @show ln, ld
     @show soliton_order
 
@@ -83,7 +83,7 @@ function run_vec(n, T_window, alpha, beta, dbetha, gamma, L, T0, P0, C0, theta, 
     fwrite(joinpath(outdir, "U0X.tsv"), abs2(U0X)); fwrite(joinpath(outdir, "U0Y.tsv"), abs2(U0Y))
 
     u_plotX, u_plotY, U_plotX, U_plotY, n_steps, n_steps_rejected, steps = 
-        rk4ip_vec!(u1X, u1Y, L, 1.e-10L, t, w, alpha, beta, dbetha, gamma,
+        rk4ip_vec!(u1X, u1Y, L, 1.e-10L, t, w, alpha, betha, dbetha, gamma,
                    gain, gain_bandwidth, E_sat, fft_plan!, ifft_plan!)
 
     fwrite(joinpath(outdir, "u_log_plotX.tsv"), clamp_log_plot(u_plotX))
