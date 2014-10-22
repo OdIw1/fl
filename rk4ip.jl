@@ -70,7 +70,7 @@
             n_steps += 1
             push!(steps, h)
             mod(n_steps, 100) == 0 && @show (n_steps, z, h)
-                         
+
             h *= scale_step_ok(err, err_prev)
             h = min(L - z, h)
             hd2 = h/2
@@ -190,16 +190,4 @@ function N_raman_steep!(u, h, dt, gamma, t_raman, steep, _uabs2, _du)
 
     k = 1im * h * gamma
     @devec u[:] = k .* u .* _uabs2
-end
-
-function PI_control_factor(err, err_prev, ae=0.7, be=0.4)
-    err^(-ae/5) * err_prev^(be/5)
-end
-
-function scale_step_fail(err, err_prev, ae=0.7, be=0.4)
-    0.8max(1/5., PI_control_factor(err, err_prev, ae, be))
-end
-
-function scale_step_ok(err, err_prev, ae=0.7, be=0.4)
-    0.8min(10, PI_control_factor(err, err_prev, ae, be))
 end
