@@ -37,8 +37,16 @@ function clamp_log_plot(u, threshold=1.e-4)
 end
 
 function out_expr(outdir, fun, vars...)
-    ex = [:(fwrite(joinpath($outdir, $(string(v, ".tsv"))), $(fun)($v))) for v in vars]
-    return ex
+    [:(fwrite(joinpath($outdir, $(string(v, ".tsv"))), $(fun)($v))) for v in vars]
+end
+
+function postfix_vars(postfixes, vars)
+    vars_postfixed = Symbol[]
+    for postfix in postfixes
+        vp = [symbol(string(v, postfix)) for v in vars]
+        append!(vars_postfixed, vp)
+    end
+    return vars_postfixed
 end
 
 macro outf(outdir, fun, vars...)
@@ -52,21 +60,13 @@ macro out(outdir, vars...)
 end 
 
 macro outfv(outdir, fun, vars...)
-    vars_postfixed = Symbol[]
-    for postfix in ["X", "Y"]
-        vp = [symbol(string(v, postfix)) for v in vars]
-        append!(vars_postfixed, vp)
-    end
+    vars_postfixed = postfix_vars(["X", "Y"], vars)
     ex = out_expr(outdir, fun, vars_postfixed...)
     return Expr(:block, ex...)
 end
 
 macro outv(outdir, vars...)
-    vars_postfixed = Symbol[]
-    for postfix in ["X", "Y"]
-        vp = [symbol(string(v, postfix)) for v in vars]
-        append!(vars_postfixed, vp)
-    end
+    vars_postfixed = postfix_vars(["X", "Y"], vars)
     ex = out_expr(outdir, identity, vars_postfixed...)
     return Expr(:block, ex...)
 end

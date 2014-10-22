@@ -85,7 +85,7 @@ function run_vec(n, T_window, alpha, betha, dbetha, gamma, L, T0, P0, C0, theta,
     spectrum!(u1X, U1X, ifft_plan!, T);             spectrum!(u1Y, U1Y, ifft_plan!, T)
     
     @outfv outdir abs2 u0 U0 u1 U1
-    @outfv outdir clamp_plot u_plot U_plot
+    # @outfv outdir clamp_plot u_plot U_plot
     @outfv outdir clamp_log_plot u_plot U_plot
     @out outdir steps
 

@@ -13,10 +13,9 @@
     steps = Float64[]
     err_prev = 1.
 
-    $([:($(symbol(string(a, 'X'))) = similar(uX)) for a in 
-        [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_full, :u_half, :u_half2]]...)
-    $([:($(symbol(string(a, 'Y'))) = similar(uX)) for a in 
-        [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx, :u_full, :u_half, :u_half2]]...)
+    $([:($a = similar(uX)) for a in 
+        postfix_vars(["X", "Y"], [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2,
+                     :_du, :_ue_cplx, :u_full, :u_half, :u_half2])]...)
 
     N! = let dt = dt, dbetha = dbetha, gamma = gamma, _uabs2X = _uabs2X, _uabs2Y = _uabs2Y
         (uA_, uB_, h_, z_) -> N_simple!(uA_, uB_, h_, z_, dt, dbetha, gamma, _uabs2X, _uabs2Y)
