@@ -15,7 +15,8 @@ end
 
 function apply_Jones_matrix!(M, uX, uY)
     for i = 1:lenght(uX)
-        uX_ = uX[i]                 uY_ = uY[i]
+        uX_ = uX[i]                 
+        uY_ = uY[i]
         uX[i] = a[1,1] * uX_ + a[1,2] * uY_
         uY[i] = a[2,1] * uX_ + a[2,2] * uY_
     end

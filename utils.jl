@@ -64,6 +64,18 @@ function gaussian_pulse(m_order, T0, P0, C0, t::Vector, t_offset=0)
     sqrt(P0) * exp(-0.5(1 + 1im * C0) * t_scaled .^ (2m_order))
 end
 
+function pulse(m_order, T0, P0, C0, t::Vector, t_offset=0)
+    if m_order == 0
+        secant_pulse(T0, P0, C0, t, t_offset)
+    else
+        gaussian_pulse(m_order, T0, P0, C0, t, t_offset)
+    end
+end
+
+function pulse_vec(m_order, T0, P0, C0, theta, t::Vector, t_offset=0)
+    u = pulse(m_order, T0, P0, C0, t, t_offset)
+    (u * cos(theta), u * sin(theta))
+end
 
 function spectrum(u, ifft_plan!, T)
     U = similar(u)

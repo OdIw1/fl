@@ -61,10 +61,7 @@ function run_vec(n, T_window, alpha, betha, dbetha, gamma, L, T0, P0, C0, theta,
     t = t_grid(n, T)
     w = w_grid(n, T)
 
-    u0X = shape == 0. ? cos(theta) * secant_pulse(T0, P0, C0, t) : 
-                       cos(theta) * gaussian_pulse(shape, T0, P0, C0, t)
-    u0Y = shape == 0. ? sin(theta) * secant_pulse(T0, P0, C0, t) : 
-                       sin(theta) * gaussian_pulse(shape, T0, P0, C0, t)
+    u0X, u0Y = pulse_vec(shape, T0, P0, C0, theta, t)
 
     gain = 0.
     gain_bandwidth = 1.e40
