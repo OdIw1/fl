@@ -1,5 +1,7 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
 
+DEBUG = true
+
 # maybe i should introduce separate bethas for X and Y axes
 @eval function rk4ip_vec!(uX, uY, L, h, t, w, 
                      alpha, betha, dbetha, gamma, g, g_bandwidth, saturation_energy,
@@ -25,6 +27,7 @@
     g_spec = gain_spectral_factor(w, g_bandwidth)
     d_exp = similar(uX)
     dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, g, saturation_energy)
+    # d_exp = dispersion_exponent(w, alpha, betha)
 
     disp_full = exp(h/2 * d_exp)
     disp_half = exp(h/4 * d_exp)
@@ -73,7 +76,7 @@
             z += h
             n_steps += 1
             push!(steps, h)
-            mod(n_steps, 100) == 0 && @show (n_steps, z, h)    
+            DEBUG && mod(n_steps, 100) == 0 && @show (n_steps, z, h)    
 
             h *= scale_step_ok(err, err_prev)
             h = min(L - z, h)
@@ -182,12 +185,14 @@ end
 function N_simple!(uX, uY, h, z, dt, dbetha, gamma, _uabs2X, _uabs2Y)
     n = length(uX)
     k = 1im * h * gamma
-    phaseX = exp(-2im * dbetha * z);                phaseY = exp(2im * dbetha * z)    
+    B = 2/3
+    C = 1/3
+    phaseX = C * exp(-2im * dbetha * z);          phaseY = C * exp(2im * dbetha * z)    
     # maybe include this into loop too
     map!(Abs2Fun(), _uabs2X, uX);                   map!(Abs2Fun(), _uabs2Y, uY)                    
     for i = 1:n
         @inbounds _uX = uX[i];                      _uY = uY[i]
-        @inbounds uX[i] = k * ((_uabs2X[i] + (2/3)*_uabs2Y[i])*_uX + (phaseX/3)*(_uY*_uY)*conj(_uX))
-        @inbounds uY[i] = k * ((_uabs2Y[i] + (2/3)*_uabs2X[i])*_uY + (phaseY/3)*(_uX*_uX)*conj(_uY))
+        @inbounds uX[i] = k * ((_uabs2X[i] + B*_uabs2Y[i])*_uX + phaseX*(_uY*_uY)*conj(_uX))
+        @inbounds uY[i] = k * ((_uabs2Y[i] + B*_uabs2X[i])*_uY + phaseY*(_uX*_uX)*conj(_uY))
     end
 end    

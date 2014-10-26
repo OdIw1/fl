@@ -1,5 +1,6 @@
 function run_scalar(n, T_window, alpha, betha, gamma, t_raman, steep, L, T0, P0, C0, shape=0)
     ln, ld, soliton_order = pulse_propagation_params(T0, P0, gamma, betha...)
+    @show L
     @show ln, ld
     @show soliton_order
 
@@ -49,6 +50,7 @@ end
 
 function run_vec(n, T_window, alpha, betha, dbetha, gamma, L, T0, P0, C0, theta, shape=0)
     ln, ld, soliton_order = pulse_propagation_params(T0, P0, gamma, betha...)
+    @show L
     @show ln, ld
     @show soliton_order
 
@@ -74,19 +76,20 @@ function run_vec(n, T_window, alpha, betha, dbetha, gamma, L, T0, P0, C0, theta,
     fft_plan! = plan_fft!(copy(u0X), (1,), FFTW.MEASURE)
     ifft_plan! = plan_ifft!(copy(u0X), (1,), FFTW.MEASURE)
     
-    # add directory creation    
-    outdir = "out"
 
     u_plotX, u_plotY, U_plotX, U_plotY, n_steps, n_steps_rejected, steps = 
         rk4ip_vec!(u1X, u1Y, L, 1.e-10L, t, w, alpha, betha, dbetha, gamma,
                    gain, gain_bandwidth, E_sat, fft_plan!, ifft_plan!)
+
+    # add directory creation    
+    outdir = "out"
 
     spectrum!(u0X, U0X, ifft_plan!, T);             spectrum!(u0Y, U0Y, ifft_plan!, T)
     spectrum!(u1X, U1X, ifft_plan!, T);             spectrum!(u1Y, U1Y, ifft_plan!, T)
     
     @outfv outdir abs2 u0 U0 u1 U1
     # @outfv outdir clamp_plot u_plot U_plot
-    @outfv outdir clamp_log_plot u_plot U_plot
+    @outfv outdir clamp_plot u_plot U_plot
     @out outdir steps
 
     E0 = (sum(abs2(u0X)) + sum(abs2(u0Y))) * (t[end] - t[end-1])
