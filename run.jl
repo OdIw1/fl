@@ -79,7 +79,7 @@ function run_vec(n, T_window, alpha, betha, dbetha, gamma, L, T0, P0, C0, theta,
                    gain, gain_bandwidth, E_sat, fft_plan!, ifft_plan!)
 
     # add directory creation    
-    outdir = "out"
+    outdir = "/mnt/hgfs/VM_shared/out/"
 
     spectrum!(u0X, U0X, ifft_plan!, T);             spectrum!(u0Y, U0Y, ifft_plan!, T)
     spectrum!(u1X, U1X, ifft_plan!, T);             spectrum!(u1Y, U1Y, ifft_plan!, T)

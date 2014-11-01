@@ -1,6 +1,6 @@
 module NLSE
 
-using NumericExtensions, NumericFuns, Devectorize
+using NumericExtensions, NumericFuns, Devectorize, Datetime
 
 include("output.jl")
 include("utils.jl")

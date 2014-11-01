@@ -5,6 +5,23 @@ function fwrite(fname, data)
     close(f)
 end
 
+function mkpath_today(path)
+    ispath(path) || mkpath(path)
+    isdir(path) || error("$path already exists and is not a directory")
+    path_contents = readdir(path)
+    dir_base = string(today())
+    
+    for i in 0:1000
+        dir = dir_base * "-" * lpad(string(i), 4, '0')
+        if dir ∉ path_contents
+            outdir = joinpath(path, dir)
+            mkdir(outdir)
+            return outdir
+        end
+    end
+    error("$path seems have thousand of data dirs already, try somewhere else")
+end
+
 function clampl{T1<:Complex, T2<:Real}(x::T1, lo::T2)
     ax = abs(x)
     ax < lo ? lo : ax
