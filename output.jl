@@ -1,9 +1,17 @@
+function fname_tsv(base_fname, i)
+    base_fname * "-" * lpad(string(i), 4, '0') * ".tsv"
+end
+
 function fwrite(fname, data)
     touch(fname)
     f = open(fname, "w+")
     writedlm(f, data)
     close(f)
 end
+
+fwrite(outdir, fname, data) = fwrite(joinpath(outdir, fname), data)
+
+fwrite(outdir, fname, i, data) = fwrite(outdir, fname_tsv(fname, i), data)
 
 function mkpath_today(path)
     ispath(path) || mkpath(path)
@@ -21,6 +29,7 @@ function mkpath_today(path)
     end
     error("$path seems have thousand of data dirs already, try somewhere else")
 end
+
 
 function clampl{T1<:Complex, T2<:Real}(x::T1, lo::T2)
     ax = abs(x)

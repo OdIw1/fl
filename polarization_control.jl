@@ -14,7 +14,7 @@ function W4(a)
 end
 
 function apply_Jones_matrix!(M, uX, uY)
-    for i = 1:lenght(uX)
+    for i = 1:length(uX)
         uX_ = uX[i]                 
         uY_ = uY[i]
         uX[i] = a[1,1] * uX_ + a[1,2] * uY_
