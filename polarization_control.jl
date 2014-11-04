@@ -1,5 +1,3 @@
-typealias JonesMatrix{T} Array{Complex{T}, 2}
-
 const half_wave = [-1.im 0; 0 1.im]
 const quarter_wave = 1. / sqrt(2) * [(1. - 1.im)  0; 0 (1. + 1.im)]
 

@@ -1,5 +1,9 @@
 abstract LaserElement
 
+typealias JonesMatrix{T} Array{Complex{T}, 2}
+
+typealias LaserScheme Array{Union(LaserElement, JonesMatrix), 1}
+
 immutable type Fiber{T<:Real} <:LaserElement
     L::T
     alpha::T
@@ -17,6 +21,14 @@ Fiber(alpha, betha, dbetha, gamma) = Fiber(alpha, betha, dbetha, gamma, 0., 1.e4
 # no birefrigence case
 Fiber(alpha, betha, gamma) = Fiber(alpha, betha, 0., gamma)
 
+
+type FileOutput <:LaserElement
+    outdir::String
+    iteration::Integer
+end
+
+FileOutput(outdir::String) = FileOutput(outdir, 0)
+
 type Pulse{T<:Real}
     uX::Vector{Complex{T}}
     uY::Vector{Complex{T}}
@@ -32,13 +44,6 @@ function Pulse(uX, uY, t, w)
     ifft_plan! = plan_ifft!(u, (1,), FFTW.MEASURE)
     Pulse(uX, uY, t, w, fft_plan!, ifft_plan!)
 end    
-
-type FileOutput <:LaserElement
-    outdir::String
-    iteration::Integer
-end
-
-FileOutput(outdir::String) = FileOutput(outdir, 0)
 
 propagate_through!(p::Pulse, M::JonesMatrix) = apply_Jones_matrix(M, p.uX, p.uY)
 
