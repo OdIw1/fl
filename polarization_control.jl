@@ -1,13 +1,18 @@
-function R(a)
+function Rotation(a)
 	JonesMatrix([cos(a)  -sin(a); sin(a) -cos(a)])
 end
 
-function W2(a)
+function Polarizer(a=0.)
+    polarizer = [(1. + 0.im) 0; 0 0]
+    JonesMatrix(R(a) * polarizer * R(-a))
+end
+
+function HalfWavePlate(a=0.)
     half_wave = [-1.im 0; 0 1.im]
 	JonesMatrix(R(a) * half_wave * R(-a))
 end
 
-function W4(a)
+function QuarterWavePlate(a=0.)
     quarter_wave = 1. / sqrt(2) * [(1. - 1.im)  0; 0 (1. + 1.im)]
 	JonesMatrix(R(a) * quarter_wave * R(-a))
 end

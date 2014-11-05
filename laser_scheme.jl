@@ -12,6 +12,8 @@ immutable type JonesMatrix{T<:Number} <: LaserElement
     end
 end
 
+*(M1::JonesMatrix, M2::JonesMatrix) = JonesMatrix(M1.m * M2.m)
+
 immutable type Fiber{T<:Real} <:LaserElement
     L::T
     alpha::T
@@ -24,9 +26,10 @@ immutable type Fiber{T<:Real} <:LaserElement
 end
 
 # no gain case
-Fiber(alpha, betha, dbetha, gamma) = Fiber(alpha, betha, dbetha, gamma, 0., 1.e40, 1.e40)
+Fiber{T}(L::T, alpha::T, betha::Vector{T}, dbetha::T, gamma::T) = 
+    Fiber(L, alpha, betha, dbetha, gamma, 0., 1.e40, 1.e40)
 # no birefrigence case
-Fiber(alpha, betha, gamma) = Fiber(alpha, betha, 0., gamma)
+Fiber{T}(L::T, alpha::T, betha::Vector{T}, gamma::T) = Fiber(L, alpha, betha, 0., gamma)
 
 type FileOutput <:LaserElement
     outdir::String
@@ -49,7 +52,8 @@ type Pulse{Ty<:Real}
     ifft_plan!::Function
 end
 
-function Pulse(uX, uY, t, w)
+function Pulse{T}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
+                  t::Vector{T}, w::Vector{T})
     n = length(t)
     dt = (t[end] - t[1]) / (n - 1)   
     T = (dt + t[end] - t[1]) / 2
@@ -61,3 +65,20 @@ function Pulse(uX, uY, t, w)
     ifft_plan! = plan_ifft!(u, (1,), FFTW.MEASURE)
     Pulse(uX, uY, t, w, n, T, fft_plan!, ifft_plan!)
 end
+
+function Pulse{T}(shape::Integer, T0::T, P0::T, C0::T,
+                  t::Vector{T}, t_offset::T, w::Vector{T})
+    uX, uY = pulse_vec(shape, T0, P0, C0, t, t_offset)
+    Pulse(uX, uY, t, w)
+end
+
+# similar, but with zero default time offset
+function Pulse{T}(shape::Integer, T0::T, P0::T, C0::T,
+                  t::Vector{T}, w::Vector{T})
+    uX, uY = pulse_vec(shape, T0, P0, C0, t, 0.)
+    Pulse(uX, uY, t, w)
+end
+
+
+    
+

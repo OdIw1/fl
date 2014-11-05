@@ -29,6 +29,14 @@ function beta_psm_to_sm(beta...)
     b
 end
 
+function beta_fsmm_to_sm(beta...)
+    b = zeros(Float64, length(beta))
+    for k = 1:length(beta)
+        b[k] = beta[k] * (1e-15)^(k+1) *1.e3
+    end
+    b
+end
+
 function pulse_propagation_params(T0, P0, gamma, beta...)
     ld = zeros(Float64, length(beta))
     soliton_order = zeros(ld)
