@@ -17,8 +17,8 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot, nz_plot) =
                           fft_plan!, ifft_plan!, nt_plot=2^8, nz_plot=2^8)
     z = 0.
     n = length(uX)
-    T = (t[end] - t[1]) / 2
     dt = (t[end] - t[1]) / (n - 1)
+    T = (dt + t[end] - t[1]) / 2
 
     n_steps = n_steps_rejected = 0
     steps = Float64[]

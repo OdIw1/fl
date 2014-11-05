@@ -1,5 +1,5 @@
 function fname_tsv(base_fname, i)
-    base_fname * "-" * lpad(string(i), 4, '0') * ".tsv"
+    lpad(string(i), 4, '0') * "-" * base_fname * ".tsv"
 end
 
 function fwrite(fname, data)

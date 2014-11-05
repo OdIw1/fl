@@ -1,6 +1,6 @@
 module NLSE
 
-using NumericExtensions, NumericFuns, Devectorize, Datetime
+using NumericExtensions, NumericFuns, Devectorize, Dates
 
 include("polarization_control.jl")
 include("laser.jl")
