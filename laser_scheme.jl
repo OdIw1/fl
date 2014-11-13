@@ -2,6 +2,7 @@ abstract LaserElement
 
 typealias LaserScheme Array{LaserElement, 1}
 
+# JonesMatrix =================================================================
 immutable type JonesMatrix{T<:Number} <: LaserElement
     m::Array{T, 2}
 
@@ -14,6 +15,7 @@ end
 
 *(M1::JonesMatrix, M2::JonesMatrix) = JonesMatrix(M1.m * M2.m)
 
+# Fiber =======================================================================
 immutable type Fiber{T<:Real} <:LaserElement
     L::T
     alpha::T
@@ -31,16 +33,18 @@ Fiber{T}(L::T, alpha::T, betha::Vector{T}, dbetha::T, gamma::T) =
 # no birefrigence case
 Fiber{T}(L::T, alpha::T, betha::Vector{T}, gamma::T) = Fiber(L, alpha, betha, 0., gamma)
 
+# FileOutput ==================================================================
 type FileOutput <:LaserElement
     outdir::String
     postfix::String
     iteration::Integer
 end
 
-FileOutput(outdir::String) = FileOutput(outdir, "")
+FileOutput(outdir::String) = FileOutput(outdir, "", 0)
 
 FileOutput(outdir::String, postfix::String) = FileOutput(outdir, postfix, 0)
 
+# Pulse =======================================================================
 type Pulse{Ty<:Real}
     uX::Vector{Complex{Ty}}
     uY::Vector{Complex{Ty}}
@@ -56,14 +60,14 @@ function Pulse{T}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
                   t::Vector{T}, w::Vector{T})
     n = length(t)
     dt = (t[end] - t[1]) / (n - 1)   
-    T = (dt + t[end] - t[1]) / 2
+    _T = (dt + t[end] - t[1]) / 2
 
     (n == length(w) == length(uX) == length(uY)) || error ("dimensions of all arrays must match")
 
     u = copy(uX)
     fft_plan! = plan_fft!(u, (1,), FFTW.MEASURE)
     ifft_plan! = plan_ifft!(u, (1,), FFTW.MEASURE)
-    Pulse(uX, uY, t, w, n, T, fft_plan!, ifft_plan!)
+    Pulse(uX, uY, t, w, n, _T, fft_plan!, ifft_plan!)
 end
 
 function Pulse{T}(shape::Integer, T0::T, P0::T, C0::T,
@@ -72,13 +76,15 @@ function Pulse{T}(shape::Integer, T0::T, P0::T, C0::T,
     Pulse(uX, uY, t, w)
 end
 
-# similar, but with zero default time offset
-function Pulse{T}(shape::Integer, T0::T, P0::T, C0::T,
-                  t::Vector{T}, w::Vector{T})
-    uX, uY = pulse_vec(shape, T0, P0, C0, t, 0.)
-    Pulse(uX, uY, t, w)
-end
+# zero default time offset
+Pulse{T}(shape::Integer, T0::T, P0::T, C0::T, t::Vector{T}, w::Vector{T}) =
+    Pulse(shape, T0, P0, C0, t, 0., w)
 
+# secant pulse with no offset
+Pulse{T}(T0::T, P0::T, C0::T, t::Vector{T}, w::Vector{T}) = Pulse(0, T0, P0, C0, t, w)
+
+# ConvergenceDetector =========================================================
+# TODO ...
 
     
 

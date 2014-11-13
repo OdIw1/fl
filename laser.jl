@@ -29,6 +29,8 @@ function run_laser_scheme!(p::Pulse, laser::LaserScheme, n_iter=2)
 end
 
 function run_laser(n, T_window, scheme, L, T0, P0, C0, theta, shape=0)
+    scheme = LaserElement[]
+
     outdir = mkpath_today()
     fout1 = FileOutput(outdir)
 
