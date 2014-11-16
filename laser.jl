@@ -13,7 +13,7 @@ function propagate_through!(p::Pulse, fout::FileOutput)
     spectrum!(p.uY, UY, p.ifft_plan!, T)
 
     i = fout.iteration
-    postfix = "-" * fout.postfix
+    postfix = length(fout.postfix) > 0 ? "-" * fout.postfix : ""
     fwrite(fout.outdir, "uX" * postfix, i, p.uX)
     fwrite(fout.outdir, "uY" * postfix, i, p.uY)
     fwrite(fout.outdir, "UX" * postfix, i, UX)
@@ -22,7 +22,7 @@ function propagate_through!(p::Pulse, fout::FileOutput)
     fout.iteration += 1
 end
 
-function run_laser_scheme!(p::Pulse, laser::LaserScheme, n_iter=2)
+function run_laser_scheme!(p::Pulse, laser::LaserScheme, n_iter=100)
     for i = 1:n_iter, j = 1:length(laser)
         propagate_through!(p, laser[j])
     end
@@ -31,13 +31,8 @@ end
 function run_laser(a1=pi/4, a2=0, a3=0)
     laser = LaserElement[]
 
-    outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
-    fout1 = FileOutput(outdir)
-    push!(laser, fout1)
-
     PC1 = QuarterWavePlate(a1)
     push!(laser, PC1)
-
 
     # fiber parameters are from 13[Yarutkina, Shtyrina]{Opt.Expr} Numerical Modeling of ...
     wl = 1550e-9
@@ -59,12 +54,20 @@ function run_laser(a1=pi/4, a2=0, a3=0)
     PC2 = _P4 * _P3 * _P2
     push!(laser, PC2)
 
+    outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
+    fout1 = FileOutput(outdir)
+    push!(laser, fout1)
+
     n = 2^14
     T0 = 1.e-12
     T = 50T0
     t = t_grid(n, T)
     w = t_grid(n, T)
     p = Pulse(T0, 1.e-5, 0., 0., t, w)
+
+    # save the initial pulse
+    fout1.iteration = 0
+    propagate_through!(p, fout1)
 
     run_laser_scheme!(p, laser)
 end

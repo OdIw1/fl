@@ -5,9 +5,7 @@ DEBUG = true
 # maybe i should introduce separate bethas for X and Y axes
 # default initial step value may be suboptimal
 
-rk4ip_vec!(p::Pulse, f::Fiber) = rk4ip_vec!(p, f, 0, 0)
-
-rk4ip_vec!(p::Pulse, f::Fiber, nt_plot, nz_plot) =
+rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
     rk4ip_vec!(p.uX, p.uY, f.L, 1e-8f.L, p.t, p.w, 
                f.alpha, f.betha, f.dbetha, f.gamma, f.gain, f.gain_bandwidth, f.saturation_energy,
                p.fft_plan!, p.ifft_plan!, nt_plot, nz_plot)
@@ -42,7 +40,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot, nz_plot) =
     disp_half = exp(h/4 * d_exp)
 
     # prepare plotting
-    do_plot = (nt_plot != 0 && nz_plot !=0)
+    do_plot = (nt_plot > 0 && nz_plot > 0)
     dz_plot = L / (nt_plot-1)
     t_plot_ind = round(linspace(1, n, nt_plot))
     $([:($a = zeros(Complex{Float64}, nz_plot, nt_plot)) for a in [:u_plotX, :u_plotY, :U_plotX, :U_plotY]]...)

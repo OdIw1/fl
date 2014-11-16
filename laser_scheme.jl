@@ -66,9 +66,9 @@ type FileOutput <:LaserElement
     iteration::Integer
 end
 
-FileOutput(outdir::String) = FileOutput(outdir, "", 0)
+FileOutput(outdir::String) = FileOutput(outdir, "", 1)
 
-FileOutput(outdir::String, postfix::String) = FileOutput(outdir, postfix, 0)
+FileOutput(outdir::String, postfix::String) = FileOutput(outdir, postfix, 1)
 
 # Pulse =======================================================================
 type Pulse{Ty<:Real}
