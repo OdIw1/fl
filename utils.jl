@@ -13,37 +13,41 @@ macro closure1(name, fun, closure_arg, args...)
     end
 end
 
-function beta_pskm_to_sm(beta...)
-    b = zeros(Float64, length(beta))
-    for k = 1:length(beta)
-        b[k] = beta[k] * (1e-12)^(k+1) * 1.e-3
+function wl2fr(wl) 2pi * 3.e8 / wl end
+
+function bw_wl2fr(wl, dwl) abs(wl2fr(wl + dwl/2) - wl2fr(wl - dwl/2)) end
+
+function betha_pskm_to_sm(betha)
+    b = zeros(Float64, length(betha))
+    for k = 1:length(betha)
+        b[k] = betha[k] * (1e-12)^(k+1) * 1.e-3
     end
     b
 end
 
-function beta_psm_to_sm(beta...)
-    b = zeros(Float64, length(beta))
-    for k = 1:length(beta)
-        b[k] = beta[k] * (1e-12)^(k+1)
+function betha_psm_to_sm(betha)
+    b = zeros(Float64, length(betha))
+    for k = 1:length(betha)
+        b[k] = betha[k] * (1e-12)^(k+1)
     end
     b
 end
 
-function beta_fsmm_to_sm(beta...)
-    b = zeros(Float64, length(beta))
-    for k = 1:length(beta)
-        b[k] = beta[k] * (1e-15)^(k+1) *1.e3
+function betha_fsmm_to_sm(betha)
+    b = zeros(Float64, length(betha))
+    for k = 1:length(betha)
+        b[k] = betha[k] * (1e-15)^(k+1) *1.e3
     end
     b
 end
 
-function pulse_propagation_params(T0, P0, gamma, beta...)
-    ld = zeros(Float64, length(beta))
+function pulse_propagation_params(T0, P0, gamma, betha...)
+    ld = zeros(Float64, length(betha))
     soliton_order = zeros(ld)
 
     ln = 1. / (gamma * P0)
-    for k = 1:length(beta)
-        ld[k] = T0^(k+1) / abs(beta[k])
+    for k = 1:length(betha)
+        ld[k] = T0^(k+1) / abs(betha[k])
         soliton_order[k] = sqrt(ld[k] / ln)
     end
     ln, ld, soliton_order

@@ -27,7 +27,7 @@ function mkpath_today(path)
             return outdir
         end
     end
-    error("$path seems have thousand of data dirs already, try somewhere else")
+    error("$path seems to have thousand of data dirs already, try somewhere else")
 end
 
 

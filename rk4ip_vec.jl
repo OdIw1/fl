@@ -5,11 +5,11 @@ DEBUG = true
 # maybe i should introduce separate bethas for X and Y axes
 # default initial step value may be suboptimal
 
-rk4ip_vec(p::Pulse, f::Fiber) = rk4ip_vec!(p, f, 0, 0)
+rk4ip_vec!(p::Pulse, f::Fiber) = rk4ip_vec!(p, f, 0, 0)
 
 rk4ip_vec!(p::Pulse, f::Fiber, nt_plot, nz_plot) =
     rk4ip_vec!(p.uX, p.uY, f.L, 1e-8f.L, p.t, p.w, 
-               f.alpha, f.betha, f.dbetha, f.gamma, f.g, f.g_bandwidth, f.saturation_energy,
+               f.alpha, f.betha, f.dbetha, f.gamma, f.gain, f.gain_bandwidth, f.saturation_energy,
                p.fft_plan!, p.ifft_plan!, nt_plot, nz_plot)
 
 @eval function rk4ip_vec!(uX, uY, L, h, t, w, 
