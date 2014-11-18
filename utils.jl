@@ -13,9 +13,16 @@ macro closure1(name, fun, closure_arg, args...)
     end
 end
 
-function wl2fr(wl) 2pi * 3.e8 / wl end
+function wl2fr(wl) 2pi * 3.e8 / wl end  
+# inverse calculation is the same
+function fr2wl(fr) 2pi * 3.e8 / fr end
 
-function bw_wl2fr(wl, dwl) abs(wl2fr(wl + dwl/2) - wl2fr(wl - dwl/2)) end
+function bandwidth_wl2fr(wl, dwl) abs(wl2fr(wl + dwl/2) - wl2fr(wl - dwl/2)) end
+
+function bandwidth_wl(n, T, wl0)
+    dfr = pi * n / (2T)
+    fr2wl(wl2fr(wl0) - dfr) - fr2wl(wl2fr(wl0) + dfr)
+end
 
 function betha_pskm_to_sm(betha)
     b = zeros(Float64, length(betha))
@@ -125,7 +132,7 @@ function df!(u, du, dx)
 end
 
 function integration_error_local{T1<:Complex, T2<:Real}(u1::Vector{T1}, u2::Vector{T1},
-                                                        ue_::Vector{T2}, atol=1.e-6, rtol=1.e-6)
+                                                        ue_::Vector{T2}, atol=1.e-5, rtol=1.e-5)
     @simd for i in 1:length(u1)
         @inbounds ue_[i] = abs(u1[i] - u2[i]) / (atol + rtol * max(abs(u1[i]), abs(u2[i])))
     end

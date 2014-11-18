@@ -1,0 +1,6 @@
+Pulse spectrum after some evolution looks like total garbage, check correctness
+
+Think about pulse dynamic monitoring parameters, what, where to report
+
+Write simple test case for polarization state evolution. ATM results look like
+shit, i.e. no polarization state changes visible at all.

@@ -92,9 +92,9 @@ function Pulse{T}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
 
     (n == length(w) == length(uX) == length(uY)) || error ("dimensions of all arrays must match")
 
-    u = copy(uX)
-    fft_plan! == nothing && (fft_plan! = plan_fft!(u, (1,), FFTW.MEASURE))
-    ifft_plan! == nothing && (ifft_plan! = plan_ifft!(u, (1,), FFTW.MEASURE))
+    u = similar(uX)
+    fft_plan! == nothing && (fft_plan! = plan_fft!(u, (1,), FFTW.PATIENT))
+    ifft_plan! == nothing && (ifft_plan! = plan_ifft!(u, (1,), FFTW.PATIENT))
     Pulse(uX, uY, t, w, n, _T, fft_plan!, ifft_plan!)
 end
 
@@ -117,6 +117,12 @@ Pulse{T}(T0::T, P0::T, C0::T, theta::T, t::Vector{T}, w::Vector{T},
          fft_plan! = nothing::Union(Nothing, Function),
          ifft_plan! = nothing::Union(Nothing, Function)) =
     Pulse(0, T0, P0, C0, theta, t, 0., w, fft_plan!, ifft_plan!)
+
+# PulseSensor =================================================================
+immutable type PulseSensor <: LaserElement
+    name::String
+    # reported pulse parameters list
+end
 
 # ConvergenceDetector =========================================================
 # TODO ...
