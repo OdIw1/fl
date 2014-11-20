@@ -24,29 +24,13 @@ function bandwidth_wl(n, T, wl0)
     fr2wl(wl2fr(wl0) - dfr) - fr2wl(wl2fr(wl0) + dfr)
 end
 
-function betha_pskm_to_sm(betha)
-    b = zeros(Float64, length(betha))
-    for k = 1:length(betha)
-        b[k] = betha[k] * (1e-12)^(k+1) * 1.e-3
-    end
-    b
-end
+function betha_convert(betha, T_factor, L_factor)
+    [betha[k] * T_factor^(k+1) / L_factor for k = 1:length(betha)]
+end    
 
-function betha_psm_to_sm(betha)
-    b = zeros(Float64, length(betha))
-    for k = 1:length(betha)
-        b[k] = betha[k] * (1e-12)^(k+1)
-    end
-    b
-end
-
-function betha_fsmm_to_sm(betha)
-    b = zeros(Float64, length(betha))
-    for k = 1:length(betha)
-        b[k] = betha[k] * (1e-15)^(k+1) *1.e3
-    end
-    b
-end
+betha_pskm_to_sm(betha) = betha_convert(betha, 1.e-12, 1.0e3)
+betha_psm_to_sm(betha) = betha_convert(betha, 1.e-12, 1.0)
+betha_fsmm_to_sm(betha) = betha_convert(betha, 1.e-15, 1.0e-3)
 
 function pulse_propagation_params(T0, P0, gamma, betha...)
     ld = zeros(Float64, length(betha))
