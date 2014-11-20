@@ -15,8 +15,8 @@ function Agr5_23()
     b8 = -2.5495e-15
     b9 = 3.0524e-18
     b10 = -1.7140e-21
-    beta_pskm = (b2, b3, b4, b5, b6, b7, b8, b9, b10)
-    beta = beta_pskm_to_sm(beta_pskm...)
+    beta_pskm = [b2, b3, b4, b5, b6, b7, b8, b9, b10]
+    beta = ps_km2s_m(beta_pskm)
     # beta = (-5.92e-20, 2.98e-34)
     gamma = 1.
     wl = 2.64e-6
@@ -40,7 +40,7 @@ function soliton(N=1)
 
     P0 = N^2 * abs(beta2) / (gamma * T0^2)
     L = pi / 2 * T0^2 / abs(beta2)
-    run_scalar(n, T_window, alpha, (beta2,), gamma, t_raman, steep, L, T0, P0, C0)
+    run_scalar(n, T_window, alpha, [beta2], gamma, t_raman, steep, L, T0, P0, C0)
 end
 
 function Heidt()
@@ -60,7 +60,7 @@ function Heidt()
     b8 = -2.5495e-15
     b9 = 3.0524e-18
     b10 = -1.7140e-21
-    beta = beta_pskm_to_sm(b2, b3, b4, b5, b6, b7, b8, b9, b10)
+    beta = ps_km2s_m([b2, b3, b4, b5, b6, b7, b8, b9, b10])
     gamma = 0.11
     steep = 1.im * 0.56e-15    
     t_raman = 2.80e-15
@@ -83,7 +83,7 @@ function Agr13_13()
     b5 = 3.032e-7
     b6 = -4.196e-10
     b7 = 2.57e-13
-    beta = beta_pskm_to_sm(b2, b3, b4, b5, b6, b7)
+    beta = ps_km2s_m([b2, b3, b4, b5, b6, b7])
     gamma = 0.10
     steep = 1.im * 0.56e-15    
     t_raman = 2.80e-15
@@ -102,7 +102,7 @@ function Agr3_6(case=0)
     alpha = 0.
     b3 = 8.119e-2
     b2 = case == 0 ? 0. : b3 / (T0 / 1.e-12)
-    beta = beta_pskm_to_sm(b2, b3)
+    beta = ps_km2s_m([b2, b3])
     gamma = 0.00
     steep = 0 # 1.im * 0.56e-15    
     t_raman = 0 # 2.80e-15
@@ -121,7 +121,7 @@ function Agr3_11(case=0)
     alpha = 0.
     b2 = 0.
     b3 = case == 0 ? 0.124 : -0.076
-    beta = beta_pskm_to_sm(b2, b3)
+    beta = ps_km2s_m([b2, b3])
     gamma = 0.00
     steep = 0 # 1.im * 0.56e-15    
     t_raman = 0 # 2.80e-15
@@ -140,7 +140,7 @@ function Agr4_15(case=0)
     alpha = 0.
     b3 = 8.119e-2
     b2 = case == 0 ? 0. : b3 / (T0 / 1.e-12)
-    beta = beta_pskm_to_sm(b2, b3)
+    beta = ps_km2s_m([b2, b3])
     gamma = abs(beta[2]) / (P0 * T0^3)
     steep = 0 # 1.im * 0.56e-15    
     t_raman = 0 # 2.80e-15
@@ -159,7 +159,7 @@ function Agr4_16(N=10)
     alpha = 0.
     b3 = 8.119e-2
     b2 = 0
-    beta = beta_pskm_to_sm(b2, b3)
+    beta = ps_km2s_m([b2, b3])
     gamma = N^2 * abs(beta[2]) / (P0 * T0^3)
     steep = 0 # 1.im * 0.56e-15    
     t_raman = 0 # 2.80e-15

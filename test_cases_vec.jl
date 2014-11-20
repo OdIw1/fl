@@ -14,5 +14,5 @@ function soliton_vec(N=1)
     P0 = N^2 * abs(betha2) / (gamma * T0^2)
     L = 10 * T0^2 / abs(betha2)
     # L = pi / 2 * T0^2 / abs(betha2)
-    run_vec(n, T_window, alpha, (betha2,), dbetha, gamma, L, T0, P0, C0, theta)
+    run_vec(n, T_window, alpha, [betha2], dbetha, gamma, L, T0, P0, C0, theta)
 end
