@@ -72,17 +72,17 @@ FileOutput(outdir::String, postfix::String) = FileOutput(outdir, postfix, 1)
 
 # Pulse =======================================================================
 type Pulse{Ty<:Real}
+    n::Integer
     uX::Vector{Complex{Ty}}
     uY::Vector{Complex{Ty}}
     t::Vector{Ty}
     w::Vector{Ty}
-    n::Integer
     T::Ty
     fft_plan!::Function
     ifft_plan!::Function
 end
 
-function Pulse{T}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
+function Pulse{T<:Real}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
                   t::Vector{T}, w::Vector{T}, 
                   fft_plan! = nothing::Union(Nothing, Function),
                   ifft_plan! = nothing::Union(Nothing, Function))
@@ -98,7 +98,7 @@ function Pulse{T}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
     Pulse(uX, uY, t, w, n, _T, fft_plan!, ifft_plan!)
 end
 
-function Pulse{T}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
+function Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
                   t::Vector{T}, t_offset::T, w::Vector{T},
                   fft_plan! = nothing::Union(Nothing, Function),
                   ifft_plan! = nothing::Union(Nothing, Function))
@@ -107,13 +107,13 @@ function Pulse{T}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
 end
 
 # zero default time offset
-Pulse{T}(shape::Integer, T0::T, P0::T, C0::T, theta::T, t::Vector{T}, w::Vector{T},
+Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T, t::Vector{T}, w::Vector{T},
          fft_plan! = nothing::Union(Nothing, Function),
          ifft_plan! = nothing::Union(Nothing, Function)) =
     Pulse(shape, T0, P0, C0, theta, t, 0., w, fft_plan!, ifft_plan!)
 
 # secant pulse with zero offset
-Pulse{T}(T0::T, P0::T, C0::T, theta::T, t::Vector{T}, w::Vector{T},
+Pulse{T<:Real}(T0::T, P0::T, C0::T, theta::T, t::Vector{T}, w::Vector{T},
          fft_plan! = nothing::Union(Nothing, Function),
          ifft_plan! = nothing::Union(Nothing, Function)) =
     Pulse(0, T0, P0, C0, theta, t, 0., w, fft_plan!, ifft_plan!)

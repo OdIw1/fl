@@ -16,8 +16,8 @@ function propagate_through!(p::Pulse, fout::FileOutput)
     postfix = length(fout.postfix) > 0 ? "-" * fout.postfix : ""
     fwrite(fout.outdir, "uX" * postfix, i, p.uX)
     fwrite(fout.outdir, "uY" * postfix, i, p.uY)
-    fwrite(fout.outdir, "fX" * postfix, i, UX)
-    fwrite(fout.outdir, "fY" * postfix, i, UY)
+    fwrite(fout.outdir, "vX" * postfix, i, UX)
+    fwrite(fout.outdir, "vY" * postfix, i, UY)
 
     fout.iteration += 1
 end

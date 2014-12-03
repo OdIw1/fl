@@ -8,6 +8,7 @@ include("laser.jl")
 include("output.jl")
 include("utils.jl")
 include("run.jl")
+include("rk4ip_utils.jl")
 
 include("rk4ip.jl")
 include("test_cases.jl")

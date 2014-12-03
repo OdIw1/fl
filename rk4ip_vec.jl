@@ -15,8 +15,8 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
                           fft_plan!, ifft_plan!, nt_plot=2^8, nz_plot=2^8)
     z = 0.
     n = length(uX)
-    dt = (t[end] - t[1]) / (n - 1)
-    T = (dt + t[end] - t[1]) / 2
+    dt = calc_dt(t)
+    T = calc_T(t)
 
     n_steps = n_steps_rejected = 0
     steps = Float64[]
@@ -27,7 +27,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
                      :_du, :_ue_cplx, :u_full, :u_half, :u_half2])]...)
 
     N! = let dt = dt, dbetha = dbetha, gamma = gamma, _uabs2X = _uabs2X, _uabs2Y = _uabs2Y
-        (uA_, uB_, h_, z_) -> N_simple!(uA_, uB_, h_, z_, dt, dbetha, gamma, _uabs2X, _uabs2Y)
+        (uA_, uB_, h_, z_) -> N_simple_vec!(uA_, uB_, h_, z_, dt, dbetha, gamma, _uabs2X, _uabs2Y)
     end
 
     d_no_gain = dispersion_without_gain(w, alpha, betha)
@@ -43,7 +43,8 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
     do_plot = (nt_plot > 0 && nz_plot > 0)
     dz_plot = L / (nt_plot-1)
     t_plot_ind = round(linspace(1, n, nt_plot))
-    $([:($a = zeros(Complex{Float64}, nz_plot, nt_plot)) for a in [:u_plotX, :u_plotY, :U_plotX, :U_plotY]]...)
+    $([:($a = zeros(Complex{Float64}, nz_plot, nt_plot)) 
+        for a in [:u_plotX, :u_plotY, :U_plotX, :U_plotY]]...)
     
     handle_plot! = let t_plot_ind = t_plot_ind, uX = uX, uY = uY, UX = UX, UY = UY,
                        u_plotX = u_plotX, u_plotY = u_plotY, U_plotX = U_plotX, U_plotY = U_plotY,
@@ -189,7 +190,7 @@ function rk4ip_step!(uX, uY, ufX, ufY, h, disp, N!, z, fft_plan!, ifft_plan!,
     BLAS.axpy!(n, 1/6 + 0.im, k4X, 1, ufX, 1);      BLAS.axpy!(n, 1/6 + 0.im, k4Y, 1, ufY, 1)
 end
 
-function N_simple!(uX, uY, h, z, dt, dbetha, gamma, _uabs2X, _uabs2Y)
+function N_simple_vec!(uX, uY, h, z, dt, dbetha, gamma, _uabs2X, _uabs2Y)
     n = length(uX)
     k = 1im * h * gamma
     B = 2/3
