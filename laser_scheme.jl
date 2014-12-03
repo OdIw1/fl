@@ -18,7 +18,7 @@ JonesMatrix{T<:Number}(a::Array{T,2}) = JonesMatrix{T}(a)
 *(M1::JonesMatrix, M2::JonesMatrix) = JonesMatrix(M1.m * M2.m)
 
 function Rotation(a=0)
-    JonesMatrix([cos(a)  -sin(a); sin(a) -cos(a)])
+    JonesMatrix([cos(a)  -sin(a); sin(a) cos(a)])
 end
 
 function Polarizer(a=0)
