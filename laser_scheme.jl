@@ -26,15 +26,17 @@ function Polarizer(a=0)
     Rotation(a) * polarizer * Rotation(-a)
 end
 
-function HalfWavePlate(a=0)
-    half_wave = JonesMatrix([-1.im 0; 0 1.im])
-    Rotation(a) * half_wave * Rotation(-a)
+function ArbitraryWavePlate(phase_shift, a=0.)
+    dphi = phase_shift / 2.
+    # signs are chosen so that X is fast axis and Y component
+    # is slowed relatively to it
+    plate = JonesMatrix([exp(-1.im*dphi) 0; 0 exp(1.im*dphi)])
+    Rotation(a) * plate * Rotation(-a)
 end
 
-function QuarterWavePlate(a=0.)
-    quarter_wave = JonesMatrix(1. / sqrt(2) * [(1. - 1.im)  0; 0 (1. + 1.im)])
-    Rotation(a) * quarter_wave * Rotation(-a)
-end
+HalfWavePlate(a=0) = ArbitraryWavePlate(pi, a)
+
+QuarterWavePlate(a=0) = ArbitraryWavePlate(pi/2, a)
 
 # Fiber =======================================================================
 immutable type Fiber{T<:Real} <:LaserElement
