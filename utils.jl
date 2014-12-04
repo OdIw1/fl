@@ -14,10 +14,10 @@ function betha_convert(betha, T_factor, L_factor)
 end    
 
 ps_km2s_m(betha) = betha_convert(betha, 1.e-12, 1.0e3)
-ps_m2s_m(betha) = betha_convert(betha, 1.e-12, 1.0)
+ps_m2s_m(betha)  = betha_convert(betha, 1.e-12, 1.0)
 fs_mm2s_m(betha) = betha_convert(betha, 1.e-15, 1.0e-3)
 
-function pulse_propagation_params(T0, P0, gamma, betha...)
+function pulse_propagation_params(T0, P0, gamma, betha)
     ld = zeros(Float64, length(betha))
     soliton_order = zeros(ld)
 

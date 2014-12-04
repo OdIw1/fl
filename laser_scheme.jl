@@ -17,6 +17,17 @@ JonesMatrix{T<:Number}(a::Array{T,2}) = JonesMatrix{T}(a)
 
 *(M1::JonesMatrix, M2::JonesMatrix) = JonesMatrix(M1.m * M2.m)
 
+function apply_Jones_matrix!(M::JonesMatrix, uX, uY)
+    a = M.m
+    for i = 1:length(uX)
+        uX_ = uX[i]                 
+        uY_ = uY[i]
+        uX[i] = a[1,1] * uX_ + a[1,2] * uY_
+        uY[i] = a[2,1] * uX_ + a[2,2] * uY_
+    end
+end
+
+
 function Rotation(a=0)
     JonesMatrix([cos(a)  -sin(a); sin(a) cos(a)])
 end
@@ -50,16 +61,16 @@ immutable type Fiber{T<:Real} <:LaserElement
     saturation_energy::T
 end
 
-# no birefrigence case
-Fiber{T}(L::T, alpha::T, betha::Vector{T}, gamma::T,
-         gain::T, gain_bandwidth::T, saturation_energy::T) =
-    Fiber(L, alpha, betha, 0., gamma, gain, gain_bandwidth, saturation_energy)
-
+# no birefrigence case, dbetha = 0
+Fiber{T<:Real}(L::T, alpha::T, betha::Vector{T}, gamma::T,
+               gain::T, gain_bandwidth::T, saturation_energy::T) =
+    Fiber(L, alpha, betha, zero(T), gamma, gain, gain_bandwidth, saturation_energy)
 # no gain case
-Fiber{T}(L::T, alpha::T, betha::Vector{T}, dbetha::T, gamma::T) =
-    Fiber(L, alpha, betha, dbetha, gamma, 0., 1.e40, 1.e40)
+Fiber{T<:Real}(L::T, alpha::T, betha::Vector{T}, dbetha::T, gamma::T) =
+    Fiber(L, alpha, betha, dbetha, gamma, zero(T), 1.e40*one(T), 1.e40*one(T))
 # no gain and birefrigence case
-Fiber{T}(L::T, alpha::T, betha::Vector{T}, gamma::T) = Fiber(L, alpha, betha, 0., gamma)
+Fiber{T<:Real}(L::T, alpha::T, betha::Vector{T}, gamma::T) = 
+    Fiber(L, alpha, betha, zero(T), gamma)
 
 # FileOutput ==================================================================
 type FileOutput <:LaserElement
@@ -84,15 +95,18 @@ type Pulse{Ty<:Real}
     ifft_plan!::Function
 end
 
-function Pulse{T<:Real}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
-                  t::Vector{T}, w::Vector{T}, 
-                  fft_plan! = nothing::Union(Nothing, Function),
-                  ifft_plan! = nothing::Union(Nothing, Function))
-    n = length(t)
-    dt = (t[end] - t[1]) / (n - 1)   
-    _T = (dt + t[end] - t[1]) / 2
+apply_Jones_matrix!(M::JonesMatrix, p::Pulse) = apply_Jones_matrix!(M, p.uX, p.uY)
 
-    (n == length(w) == length(uX) == length(uY)) || error ("dimensions of all arrays must match")
+function Pulse{T<:Real}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
+                        t::Vector{T}, w::Vector{T}, 
+                        fft_plan! = nothing::Union(Nothing, Function),
+                        ifft_plan! = nothing::Union(Nothing, Function))
+    n = length(t)
+    dt = calc_dt(t)  
+    _T = calc_T(t)
+
+    (n == length(w) == length(uX) == length(uY)) || 
+        error("dimensions of all pulse arrays must match")
 
     u = similar(uX)
     fft_plan! == nothing && (fft_plan! = plan_fft!(u, (1,), FFTW.PATIENT))
@@ -101,43 +115,33 @@ function Pulse{T<:Real}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
 end
 
 function Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
-                  t::Vector{T}, t_offset::T, w::Vector{T},
-                  fft_plan! = nothing::Union(Nothing, Function),
-                  ifft_plan! = nothing::Union(Nothing, Function))
+                        t::Vector{T}, t_offset::T, w::Vector{T},
+                        fft_plan! = nothing::Union(Nothing, Function),
+                        ifft_plan! = nothing::Union(Nothing, Function))
     uX, uY = pulse_vec(shape, T0, P0, C0, theta, t, t_offset)
     Pulse(uX, uY, t, w, fft_plan!, ifft_plan!)
 end
 
 # zero default time offset
 Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T, t::Vector{T}, w::Vector{T},
-         fft_plan! = nothing::Union(Nothing, Function),
-         ifft_plan! = nothing::Union(Nothing, Function)) =
-    Pulse(shape, T0, P0, C0, theta, t, 0., w, fft_plan!, ifft_plan!)
+               fft_plan! = nothing::Union(Nothing, Function),
+               ifft_plan! = nothing::Union(Nothing, Function)) =
+    Pulse(shape, T0, P0, C0, theta, t, zero(T), w, fft_plan!, ifft_plan!)
 
 # secant pulse with zero offset
 Pulse{T<:Real}(T0::T, P0::T, C0::T, theta::T, t::Vector{T}, w::Vector{T},
-         fft_plan! = nothing::Union(Nothing, Function),
-         ifft_plan! = nothing::Union(Nothing, Function)) =
-    Pulse(0, T0, P0, C0, theta, t, 0., w, fft_plan!, ifft_plan!)
+               fft_plan! = nothing::Union(Nothing, Function),
+               ifft_plan! = nothing::Union(Nothing, Function)) =
+    Pulse(zero(Int64), T0, P0, C0, theta, t, zero(T), w, fft_plan!, ifft_plan!)
 
 # PulseSensor =================================================================
 immutable type PulseSensor <: LaserElement
     name::String
     # reported pulse parameters list
+     
 end
 
 # ConvergenceDetector =========================================================
 # TODO ...
 
 
-function apply_Jones_matrix!(M::JonesMatrix, uX, uY)
-    a = M.m
-    for i = 1:length(uX)
-        uX_ = uX[i]                 
-        uY_ = uY[i]
-        uX[i] = a[1,1] * uX_ + a[1,2] * uY_
-        uY[i] = a[2,1] * uX_ + a[2,2] * uY_
-    end
-end
-
-apply_Jones_matrix!(M::JonesMatrix, p::Pulse) = apply_Jones_matrix!(M, p.uX, p.uY)

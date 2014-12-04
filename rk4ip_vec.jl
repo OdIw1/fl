@@ -23,11 +23,11 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
     err_prev = 1.
 
     $([:($a = similar(uX)) for a in 
-        postfix_vars(["X", "Y"], [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2,
+        postfix_vars(["X", "Y"], [:U, :_u1, :_k1, :_k2, :_k3, :_k4,
                      :_du, :_ue_cplx, :u_full, :u_half, :u_half2])]...)
 
-    N! = let dt = dt, dbetha = dbetha, gamma = gamma, _uabs2X = _uabs2X, _uabs2Y = _uabs2Y
-        (uA_, uB_, h_, z_) -> N_simple_vec!(uA_, uB_, h_, z_, dt, dbetha, gamma, _uabs2X, _uabs2Y)
+    N! = let dt = dt, dbetha = dbetha, gamma = gamma
+        (uA_, uB_, h_, z_) -> N_simple_vec!(uA_, uB_, h_, z_, dt, dbetha, gamma)
     end
 
     d_no_gain = dispersion_without_gain(w, alpha, betha)
@@ -190,17 +190,17 @@ function rk4ip_step!(uX, uY, ufX, ufY, h, disp, N!, z, fft_plan!, ifft_plan!,
     BLAS.axpy!(n, 1/6 + 0.im, k4X, 1, ufX, 1);      BLAS.axpy!(n, 1/6 + 0.im, k4Y, 1, ufY, 1)
 end
 
-function N_simple_vec!(uX, uY, h, z, dt, dbetha, gamma, _uabs2X, _uabs2Y)
+function N_simple_vec!(uX, uY, h, z, dt, dbetha, gamma)
     n = length(uX)
     k = 1im * h * gamma
     B = 2/3
     C = 1/3
-    phaseX = C * exp(-2im * dbetha * z);          phaseY = C * exp(2im * dbetha * z)    
-    # maybe include this into loop too
-    map!(Abs2Fun(), _uabs2X, uX);                   map!(Abs2Fun(), _uabs2Y, uY)                    
+    phaseX = C * exp(-2im * dbetha * z);            phaseY = C * exp(2im * dbetha * z)    
+                  
     for i = 1:n
         @inbounds _uX = uX[i];                      _uY = uY[i]
-        @inbounds uX[i] = k * ((_uabs2X[i] + B*_uabs2Y[i])*_uX + phaseX*(_uY*_uY)*conj(_uX))
-        @inbounds uY[i] = k * ((_uabs2Y[i] + B*_uabs2X[i])*_uY + phaseY*(_uX*_uX)*conj(_uY))
+        @inbounds _uabs2X = abs2(_uX);              _uabs2Y = abs2(_uY)
+        @inbounds uX[i] = k * ((_uabs2X + B*_uabs2Y)*_uX + phaseX*(_uY*_uY)*conj(_uX))
+        @inbounds uY[i] = k * ((_uabs2Y + B*_uabs2X)*_uY + phaseY*(_uX*_uX)*conj(_uY))
     end
 end    

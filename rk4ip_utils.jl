@@ -3,7 +3,6 @@ type RK4IPTemp{T<:Real}
     k1X::Vector{Complex{T}}
 end
 
-
 function df!(u, du, dx)
     # du = d(u)/dx, u and du MUST be different arrays
     du[1] = (u[2] - u[end]) / (2dx)
