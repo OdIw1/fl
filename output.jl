@@ -19,7 +19,7 @@ function mkpath_today(path)
     path_contents = readdir(path)
     dir_base = string(today())
     
-    for i in 0:1000
+    for i in 1:1000
         dir = dir_base * "-" * lpad(string(i), 4, '0')
         if dir ∉ path_contents
             outdir = joinpath(path, dir)

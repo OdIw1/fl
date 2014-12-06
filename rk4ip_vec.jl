@@ -1,6 +1,6 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
 
-DEBUG = true
+DEBUG = false
 
 # maybe i should introduce separate bethas for X and Y axes
 # default initial step value may be suboptimal
@@ -56,7 +56,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
     i_plot = 1
     do_plot && handle_plot!(i_plot)
 
-    @time @profile while z < L
+    @time while z < L
         # full step
         rk4ip_step!(uX, uY, u_fullX, u_fullY, h, disp_full, N!, z,
                     fft_plan!, ifft_plan!,

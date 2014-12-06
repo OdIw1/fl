@@ -79,11 +79,15 @@ type FileOutput <:LaserElement
     outdir::String
     postfix::String
     iteration::Integer
+    first_iteration::Bool
+    UX       # temporaries array
+    UY       # temporaries array
 end
 
-FileOutput(outdir::String) = FileOutput(outdir, "", 0)
+FileOutput(outdir::String) = FileOutput(outdir, "", 0, true, [0.im], [0.im])
 
-FileOutput(outdir::String, postfix::String) = FileOutput(outdir, postfix, 0)
+FileOutput(outdir::String, postfix::String) = 
+    FileOutput(outdir, postfix, 0, true, [0.im], [0.im])
 
 # Pulse =======================================================================
 type Pulse{Ty<:Real}
@@ -135,6 +139,22 @@ Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
                n::Integer, T_::T,
                fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun) =
     Pulse(shape, T0, P0, C0, theta, n, T_, zero(T), fft_plan!, ifft_plan!)
+
+# other elements ==============================================================
+type SpectralFilter <: LaserElement
+    bandwidth::Real
+end
+
+SpectralFilter() = SpectralFilter(0.8)
+
+type SaturableAbsorber <: LaserElement
+    modulation_depth
+    saturation_power
+end
+
+type Coupler <: LaserElement
+    transmittance
+end
 
 # PulseSensor =================================================================
 immutable type PulseSensor <: LaserElement

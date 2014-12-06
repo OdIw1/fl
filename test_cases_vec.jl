@@ -83,13 +83,13 @@ function Agr4_15_waveplate(case=0, wp_angle=pi/4)
     run_laser_scheme!(p, scheme)
 end
 
-function Yarutkina13(a1=pi/6, a2=0, a3=0)
+function Yarutkina13(n_iter=1, a1=pi/6, a2=0, a3=0)
     # fiber parameters are from 13[Yarutkina, Shtyrina]{Opt.Expr} Numerical Modeling of ...
     wl = 1550e-9
     gain_bw_wl = 50e-9
     gain_bw = bandwidth_wl2fr(wl, gain_bw_wl)
     La = 2.
-    Lp = 10.
+    Lp = 5.
     t_round = (La + Lp) * 1.47 / 3.e8
     sat_e = 20.e-3 * t_round
 
@@ -107,16 +107,52 @@ function Yarutkina13(a1=pi/6, a2=0, a3=0)
     n = 2^14
     T0 = 1.e-10
     P0 = 1.e-2
-    T = 100T0
+    T = 30T0
     p = Pulse(0, T0, P0, 0., 0., n, T)
 
-    # outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
-    outdir = "/mnt/hgfs/VM_shared/out/"
+    F = SpectralFilter(0.8)
+
+    outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
+    # outdir = "/mnt/hgfs/VM_shared/out/"
     foutPC1 = FileOutput(outdir, "PC1")
     foutA   = FileOutput(outdir, "A")
     foutP   = FileOutput(outdir, "P")
     foutPC2 = FileOutput(outdir, "PC2")
     # run
-    laser = LaserElement[PC1, foutPC1, fiber_active, foutA, fiber_passive, foutP, PC2, foutPC2]   
-    run_laser_scheme!(p, laser, 1)
+    laser = LaserElement[PC1, foutPC1, fiber_active, F, foutA, fiber_passive, foutP, PC2, foutPC2]   
+    run_laser_scheme!(p, laser, n_iter)
+end
+
+
+function Yarutkina13scalar(n_iter=1)
+    # fiber parameters are from 13[Yarutkina, Shtyrina]{Opt.Expr} Numerical Modeling of ...
+    wl = 1550e-9
+    gain_bw_wl = 50e-9
+    gain_bw = bandwidth_wl2fr(wl, gain_bw_wl)
+    La = 2.
+    Lp = 100.
+    t_round = (La + Lp) * 1.47 / 3.e8
+    sat_e = 20.e-3 * t_round
+
+    fiber_active = Fiber(La, 0., fs_mm2s_m([76.9, 168.]), 9.32e-3, 10^(5.4/10), gain_bw, sat_e)
+    fiber_passive = Fiber(Lp, 10^(0.2/10) * 1.e-3, fs_mm2s_m([4.5, 109]), 2.1e-3)
+
+    sa = SaturableAbsorber(0.1, 3.69)
+    c = Coupler(0.9)
+
+    # seed pulse params
+    n = 2^13
+    T0 = 1.e-10
+    P0 = 1.e-2
+    T = 60T0
+    p = Pulse(0, T0, P0, 0., 0., n, T)
+
+    outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
+    # outdir = "/mnt/hgfs/VM_shared/out/"
+    foutA   = FileOutput(outdir, "A")
+    foutS   = FileOutput(outdir, "S")
+    foutP   = FileOutput(outdir, "P")
+    # run
+    laser = LaserElement[foutP, fiber_active, foutA, c, sa, foutS, fiber_passive]   
+    run_laser_scheme!(p, laser, n_iter)
 end
