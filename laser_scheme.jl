@@ -2,6 +2,8 @@ abstract LaserElement
 
 typealias LaserScheme Array{LaserElement, 1}
 
+typealias FFTFun Union(Nothing, Function)
+
 # JonesMatrix =================================================================
 immutable type JonesMatrix{T<:Number} <: LaserElement
     m::Array{T, 2}
@@ -45,9 +47,9 @@ function ArbitraryWavePlate(phase_shift, a=0.)
     Rotation(a) * plate * Rotation(-a)
 end
 
-HalfWavePlate(a=0) = ArbitraryWavePlate(pi, a)
+HalfWavePlate(a=0.) = ArbitraryWavePlate(pi, a)
 
-QuarterWavePlate(a=0) = ArbitraryWavePlate(pi/2, a)
+QuarterWavePlate(a=0.) = ArbitraryWavePlate(pi/2, a)
 
 # Fiber =======================================================================
 immutable type Fiber{T<:Real} <:LaserElement
@@ -79,18 +81,16 @@ type FileOutput <:LaserElement
     iteration::Integer
 end
 
-FileOutput(outdir::String) = FileOutput(outdir, "", 1)
+FileOutput(outdir::String) = FileOutput(outdir, "", 0)
 
-FileOutput(outdir::String, postfix::String) = FileOutput(outdir, postfix, 1)
+FileOutput(outdir::String, postfix::String) = FileOutput(outdir, postfix, 0)
 
 # Pulse =======================================================================
 type Pulse{Ty<:Real}
-    n::Integer
     uX::Vector{Complex{Ty}}
     uY::Vector{Complex{Ty}}
     t::Vector{Ty}
     w::Vector{Ty}
-    T::Ty
     fft_plan!::Function
     ifft_plan!::Function
 end
@@ -99,40 +99,42 @@ apply_Jones_matrix!(M::JonesMatrix, p::Pulse) = apply_Jones_matrix!(M, p.uX, p.u
 
 function Pulse{T<:Real}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
                         t::Vector{T}, w::Vector{T}, 
-                        fft_plan! = nothing::Union(Nothing, Function),
-                        ifft_plan! = nothing::Union(Nothing, Function))
-    n = length(t)
-    dt = calc_dt(t)  
-    _T = calc_T(t)
-
-    (n == length(w) == length(uX) == length(uY)) || 
+                        fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
+    (length(t) == length(w) == length(uX) == length(uY)) || 
         error("dimensions of all pulse arrays must match")
 
     u = similar(uX)
-    fft_plan! == nothing && (fft_plan! = plan_fft!(u, (1,), FFTW.PATIENT))
-    ifft_plan! == nothing && (ifft_plan! = plan_ifft!(u, (1,), FFTW.PATIENT))
-    Pulse(uX, uY, t, w, n, _T, fft_plan!, ifft_plan!)
+    fft_plan! == nothing && (fft_plan! = plan_fft!(u, (1,), FFTW.MEASURE))
+    ifft_plan! == nothing && (ifft_plan! = plan_ifft!(u, (1,), FFTW.MEASURE))
+    Pulse(copy(uX), copy(uY), copy(t), copy(w), fft_plan!, ifft_plan!)
 end
 
 function Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
                         t::Vector{T}, t_offset::T, w::Vector{T},
-                        fft_plan! = nothing::Union(Nothing, Function),
-                        ifft_plan! = nothing::Union(Nothing, Function))
+                        fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
+    uX, uY = pulse_vec(shape, T0, P0, C0, theta, t, t_offset)
+    Pulse(uX, uY, t, w, fft_plan!, ifft_plan!)
+end
+
+function Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
+                        n::Integer, T_::T, t_offset::T,
+                        fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
+    t = t_grid(n, T_)
+    w = w_grid(n, T_)
     uX, uY = pulse_vec(shape, T0, P0, C0, theta, t, t_offset)
     Pulse(uX, uY, t, w, fft_plan!, ifft_plan!)
 end
 
 # zero default time offset
-Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T, t::Vector{T}, w::Vector{T},
-               fft_plan! = nothing::Union(Nothing, Function),
-               ifft_plan! = nothing::Union(Nothing, Function)) =
+Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T, 
+               t::Vector{T}, w::Vector{T},
+               fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun) =
     Pulse(shape, T0, P0, C0, theta, t, zero(T), w, fft_plan!, ifft_plan!)
 
-# secant pulse with zero offset
-Pulse{T<:Real}(T0::T, P0::T, C0::T, theta::T, t::Vector{T}, w::Vector{T},
-               fft_plan! = nothing::Union(Nothing, Function),
-               ifft_plan! = nothing::Union(Nothing, Function)) =
-    Pulse(zero(Int64), T0, P0, C0, theta, t, zero(T), w, fft_plan!, ifft_plan!)
+Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
+               n::Integer, T_::T,
+               fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun) =
+    Pulse(shape, T0, P0, C0, theta, n, T_, zero(T), fft_plan!, ifft_plan!)
 
 # PulseSensor =================================================================
 immutable type PulseSensor <: LaserElement

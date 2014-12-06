@@ -17,7 +17,7 @@ ps_km2s_m(betha) = betha_convert(betha, 1.e-12, 1.0e3)
 ps_m2s_m(betha)  = betha_convert(betha, 1.e-12, 1.0)
 fs_mm2s_m(betha) = betha_convert(betha, 1.e-15, 1.0e-3)
 
-function pulse_propagation_params(T0, P0, gamma, betha)
+function pulse_propagation_params(T0, P0, betha::Array, gamma)
     ld = zeros(Float64, length(betha))
     soliton_order = zeros(ld)
 
@@ -26,10 +26,10 @@ function pulse_propagation_params(T0, P0, gamma, betha)
         ld[k] = T0^(k+1) / abs(betha[k])
         soliton_order[k] = sqrt(ld[k] / ln)
     end
-    ln, ld, soliton_order
+    ld, ln, soliton_order
 end
 
-function t_grid(n, T)
+function t_grid(n::Integer, T::Real)
 # In MATLAB version 'T' was a scaling factor: time window was (-T0 T, T0 T),
 # where T0 is pulse FWHM;  in Julia time window is (-T, T)
 # also 'n' is no longer binary log of the number of grid points, it is the number itself
@@ -37,7 +37,7 @@ function t_grid(n, T)
     dt * [-n/2 : (n/2 - 1)]
 end
 
-function w_grid(n, T)
+function w_grid(n::Integer, T::Real)
     dw = pi / T
     dw * [0 : (n/2 -1), -n/2 : -1]
 end

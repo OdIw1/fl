@@ -102,12 +102,12 @@ function Agr3_6(case=0)
     alpha = 0.
     b3 = 8.119e-2
     b2 = case == 0 ? 0. : b3 / (T0 / 1.e-12)
-    beta = ps_km2s_m([b2, b3])
+    betha = ps_km2s_m([b2, b3])
     gamma = 0.00
     steep = 0 # 1.im * 0.56e-15    
     t_raman = 0 # 2.80e-15
 
-    L = 5 * T0^3 / abs(beta[2])
+    L = 5 * T0^3 / abs(betha[2])
     run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
 end
 
@@ -121,13 +121,13 @@ function Agr3_11(case=0)
     alpha = 0.
     b2 = 0.
     b3 = case == 0 ? 0.124 : -0.076
-    beta = ps_km2s_m([b2, b3])
+    betha = ps_km2s_m([b2, b3])
     gamma = 0.00
     steep = 0 # 1.im * 0.56e-15    
     t_raman = 0 # 2.80e-15
 
     L = 2.5e3
-    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
+    run_scalar(n, T_window, alpha, betha, gamma, t_raman, steep, L, T0, P0, C0, 1)
 end
 
 function Agr4_15(case=0)
@@ -141,12 +141,12 @@ function Agr4_15(case=0)
     b3 = 8.119e-2
     b2 = case == 0 ? 0. : b3 / (T0 / 1.e-12)
     beta = ps_km2s_m([b2, b3])
-    gamma = abs(beta[2]) / (P0 * T0^3)
+    gamma = abs(betha[2]) / (P0 * T0^3)
     steep = 0 # 1.im * 0.56e-15    
     t_raman = 0 # 2.80e-15
 
     L = 5 * T0^3 / abs(beta[2])
-    run_scalar(n, T_window, alpha, beta, gamma, t_raman, steep, L, T0, P0, C0, 1)
+    run_scalar(n, T_window, alpha, betha, gamma, t_raman, steep, L, T0, P0, C0, 1)
 end
 
 function Agr4_16(N=10)
