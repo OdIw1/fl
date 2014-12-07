@@ -1,5 +1,5 @@
 function run_scalar(n, T_window, alpha, betha, gamma, t_raman, steep, L, T0, P0, C0, shape=0)
-    ld, ln, soliton_order = pulse_propagation_params(T0, P0, betha, gamma)
+    ld, ln, soliton_order = pulse_params(T0, P0, betha, gamma)
     @show L
     @show ln, ld
     @show soliton_order
@@ -49,7 +49,7 @@ end
 
 
 function run_vec(n, T_window, alpha, betha, dbetha, gamma, L, T0, P0, C0, theta, shape=0)
-    ld, ln, soliton_order = pulse_propagation_params(T0, P0, betha, gamma)
+    ld, ln, soliton_order = pulse_params(T0, P0, betha, gamma)
     @show L
     @show ln, ld
     @show soliton_order

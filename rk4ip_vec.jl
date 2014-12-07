@@ -6,11 +6,11 @@ DEBUG = false
 # default initial step value may be suboptimal
 
 rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
-    rk4ip_vec!(p.uX, p.uY, f.L, 1e-8f.L, p.t, p.w, 
+    rk4ip_vec!(p.uX, p.uY, p.t, p.w, f.L, 1e-6f.L, f.max_steps, f.adaptive_step,
                f.alpha, f.betha, f.dbetha, f.gamma, f.gain, f.gain_bandwidth, f.saturation_energy,
                p.fft_plan!, p.ifft_plan!, nt_plot, nz_plot)
 
-@eval function rk4ip_vec!(uX, uY, L, h, t, w, 
+@eval function rk4ip_vec!(uX, uY, t, w, L, h0, max_steps, adaptive_step, 
                           alpha, betha, dbetha, gamma, g, g_bandwidth, saturation_energy,
                           fft_plan!, ifft_plan!, nt_plot=2^8, nz_plot=2^8)
     z = 0.
@@ -20,7 +20,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
 
     n_steps = n_steps_rejected = 0
     steps = Float64[]
-    err_prev = 1.
+    err = err_prev = 1.
 
     $([:($a = similar(uX)) for a in 
         postfix_vars(["X", "Y"], [:U, :_u1, :_k1, :_k2, :_k3, :_k4,
@@ -29,6 +29,9 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
     N! = let dt = dt, dbetha = dbetha, gamma = gamma
         (uA_, uB_, h_, z_) -> N_simple_vec!(uA_, uB_, h_, z_, dt, dbetha, gamma)
     end
+
+    hmin = L / max_steps
+    h = adaptive_step ? max(h0, hmin): hmin
 
     d_no_gain = dispersion_without_gain(w, alpha, betha)
     g_spec = gain_spectral_factor(w, g_bandwidth)
@@ -62,18 +65,20 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
                     fft_plan!, ifft_plan!,
                     _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
         # 2 half-steps
-        rk4ip_step!(uX, uY, u_halfX, u_halfY, h/2, disp_half, N!, z,
-                    fft_plan!, ifft_plan!,
-                    _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
-        rk4ip_step!(u_halfX, u_halfY, u_half2X, u_half2Y, h/2, disp_half, N!, z + h/2,
-                    fft_plan!, ifft_plan!,
-                    _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
-        
-        errX = integration_error_global(u_fullX, u_half2X, _ue_cplxX)
-        errY = integration_error_global(u_fullY, u_half2Y, _ue_cplxY)
-        err = sqrt((sqr(errX) + sqr(errY)) / 2)
+        if adaptive_step
+            rk4ip_step!(uX, uY, u_halfX, u_halfY, h/2, disp_half, N!, z,
+                        fft_plan!, ifft_plan!,
+                        _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
+            rk4ip_step!(u_halfX, u_halfY, u_half2X, u_half2Y, h/2, disp_half, N!, z + h/2,
+                        fft_plan!, ifft_plan!,
+                        _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
+            
+            errX = integration_error_global(u_fullX, u_half2X, _ue_cplxX)
+            errY = integration_error_global(u_fullY, u_half2Y, _ue_cplxY)
+            err = sqrt((sqr(errX) + sqr(errY)) / 2)
+        end
 
-        if err > 1
+        if adaptive_step & (err > 1) & (h > hmin)
             n_steps_rejected += 1
             h *= scale_step_fail(err, err_prev)
             hd2 = h/2
@@ -86,15 +91,19 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
             push!(steps, h)
             DEBUG && mod(n_steps, 100) == 0 && @show (n_steps, z, h)    
 
-            h *= scale_step_ok(err, err_prev)
-            h = min(L - z, h)
-            hd2 = h/2
-            hd4 = h/4
+            if adaptive_step
+                err_prev = err
+                BLAS.blascopy!(n, u_half2X, 1, uX, 1);      BLAS.blascopy!(n, u_half2Y, 1, uY, 1)
 
-            err_prev = err
-            BLAS.blascopy!(n, u_half2X, 1, uX, 1);      BLAS.blascopy!(n, u_half2Y, 1, uY, 1);
+                h = max(h * scale_step_ok(err, err_prev), hmin)
+                h = min(L - z, h)
+            else
+                BLAS.blascopy!(n, u_fullX, 1, uX, 1);       BLAS.blascopy!(n, u_fullY, 1, uY, 1)
+            end
 
             dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, g, saturation_energy)
+            hd2 = h/2
+            hd4 = h/4
             @devec disp_full[:] = exp(hd2 .* d_exp)
             @devec disp_half[:] = exp(hd4 .* d_exp)
 

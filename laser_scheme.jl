@@ -61,33 +61,42 @@ immutable type Fiber{T<:Real} <:LaserElement
     gain::T
     gain_bandwidth::T
     saturation_energy::T
+    max_steps::Integer
+    adaptive_step::Bool
 end
 
 # no birefrigence case, dbetha = 0
 Fiber{T<:Real}(L::T, alpha::T, betha::Vector{T}, gamma::T,
-               gain::T, gain_bandwidth::T, saturation_energy::T) =
-    Fiber(L, alpha, betha, zero(T), gamma, gain, gain_bandwidth, saturation_energy)
+               gain::T, gain_bandwidth::T, saturation_energy::T,
+               max_steps=1000::Integer, adaptive_step=false::Bool) =
+    Fiber(L, alpha, betha, zero(T), gamma, gain, gain_bandwidth, saturation_energy,
+          max_steps, adaptive_step)
 # no gain case
-Fiber{T<:Real}(L::T, alpha::T, betha::Vector{T}, dbetha::T, gamma::T) =
-    Fiber(L, alpha, betha, dbetha, gamma, zero(T), 1.e40*one(T), 1.e40*one(T))
+Fiber{T<:Real}(L::T, alpha::T, betha::Vector{T}, dbetha::T, gamma::T,
+               max_steps=1000::Integer, adaptive_step=false::Bool) =
+    Fiber(L, alpha, betha, dbetha, gamma, zero(T), 1.e40*one(T), 1.e40*one(T),
+          max_steps, adaptive_step)
 # no gain and birefrigence case
-Fiber{T<:Real}(L::T, alpha::T, betha::Vector{T}, gamma::T) = 
-    Fiber(L, alpha, betha, zero(T), gamma)
+Fiber{T<:Real}(L::T, alpha::T, betha::Vector{T}, gamma::T,
+               max_steps=1000::Integer, adaptive_step=false::Bool) =
+    Fiber(L, alpha, betha, zero(T), gamma, max_steps, adaptive_step)
 
 # FileOutput ==================================================================
 type FileOutput <:LaserElement
     outdir::String
     postfix::String
     iteration::Integer
+    onlyX::Bool
     first_iteration::Bool
     UX       # temporaries array
     UY       # temporaries array
 end
 
-FileOutput(outdir::String) = FileOutput(outdir, "", 0, true, [0.im], [0.im])
+FileOutput(outdir::String, onlyX=false::Bool) = 
+    FileOutput(outdir, "", 1, onlyX, true, [0.im], [0.im])
 
-FileOutput(outdir::String, postfix::String) = 
-    FileOutput(outdir, postfix, 0, true, [0.im], [0.im])
+FileOutput(outdir::String, postfix::String, onlyX=false::Bool) = 
+    FileOutput(outdir, postfix, 1, onlyX, true, [0.im], [0.im])
 
 # Pulse =======================================================================
 type Pulse{Ty<:Real}
@@ -159,9 +168,10 @@ end
 # PulseSensor =================================================================
 immutable type PulseSensor <: LaserElement
     name::String
-    # reported pulse parameters list
-     
+    # reported pulse parameters list    
 end
+
+PulseSensor() = PulseSensor("unnamed_sensor")
 
 # ConvergenceDetector =========================================================
 # TODO ...

@@ -15,14 +15,14 @@ function propagate_through!(p::Pulse, fout::FileOutput)
 
     T = calc_T(p.t)   
     spectrum!(p.uX, fout.UX, p.ifft_plan!, T)
-    spectrum!(p.uY, fout.UY, p.ifft_plan!, T)
+    fout.onlyX || spectrum!(p.uY, fout.UY, p.ifft_plan!, T)
 
     i = fout.iteration
     postfix = length(fout.postfix) > 0 ? "-" * fout.postfix : ""
     fwrite(fout.outdir, "uX" * postfix, i, p.uX)
-    fwrite(fout.outdir, "uY" * postfix, i, p.uY)
+    fout.onlyX || fwrite(fout.outdir, "uY" * postfix, i, p.uY)
     fwrite(fout.outdir, "vX" * postfix, i, fout.UX)
-    fwrite(fout.outdir, "vY" * postfix, i, fout.UY)
+    fout.onlyX || fwrite(fout.outdir, "vY" * postfix, i, fout.UY)
 
     fout.iteration += 1
 end
@@ -54,6 +54,14 @@ function propagate_through!(p::Pulse, c::Coupler)
     n = length(p.t)
     BLAS.scal!(n, c.transmittance, p.uX, 1)
     BLAS.scal!(n, c.transmittance, p.uY, 1)
+end
+
+function propagate_through!(p::Pulse, s::PulseSensor)
+    dt = calc_dt(p.t)
+    n = length(p.t)
+    EX = sqr(BLAS.nrm2(n, p.uX, 1)) * dt;           EY = sqr(BLAS.nrm2(n, p.uY, 1)) * dt
+    energy = EX + EY
+    print("E, nJ: $(energy / 1.e-9)\n")
 end
 
 function run_laser_scheme!(p::Pulse, laser::LaserScheme, n_iter=1)

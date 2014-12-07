@@ -44,7 +44,7 @@ function Agr3_6_waveplate(case=0, theta=0.::Real)
     gamma = 0.
     
     @show L = 5 * T0^3 / abs(betha[2])
-    @show Ld, Ln, sol_order = pulse_propagation_params(T0, P0, betha, gamma)
+    @show Ld, Ln, sol_order = pulse_params(T0, P0, betha, gamma)
     f = Fiber(L, 0., betha, gamma)
     p = Pulse(1, T0, P0, 0. , theta, n, 20T0)
 
@@ -68,7 +68,7 @@ function Agr4_15_waveplate(case=0, wp_angle=pi/4)
     gamma = abs(betha[2]) / (P0 * T0^3)
     
     @show L = 5 * T0^3 / abs(betha[2])
-    @show Ld, Ln, sol_order = pulse_propagation_params(T0, P0, betha, gamma)
+    @show Ld, Ln, sol_order = pulse_params(T0, P0, betha, gamma)
     f = Fiber(L, 0., betha, gamma)
     p = Pulse(1, T0, P0, 0., 0., n, 20T0)
 
@@ -134,25 +134,33 @@ function Yarutkina13scalar(n_iter=1)
     t_round = (La + Lp) * 1.47 / 3.e8
     sat_e = 20.e-3 * t_round
 
-    fiber_active = Fiber(La, 0., fs_mm2s_m([76.9, 168.]), 9.32e-3, 10^(5.4/10), gain_bw, sat_e)
-    fiber_passive = Fiber(Lp, 10^(0.2/10) * 1.e-3, fs_mm2s_m([4.5, 109]), 2.1e-3)
+    betha_a = fs_mm2s_m([76.9, 168.])
+    gamma_a = 9.32e-3
+    betha_p = fs_mm2s_m([4.5, 109])
+    gamma_p = 2.1e-3
+    fiber_active = Fiber(La, 0., betha_a, gamma_a, 10^(5.4/10), gain_bw, sat_e, 500)
+    fiber_passive = Fiber(Lp, 10^(0.2/10) * 1.e-3, betha_p, gamma_p, 1000)
 
     sa = SaturableAbsorber(0.1, 3.69)
-    c = Coupler(0.9)
+    cp = Coupler(0.9)
 
     # seed pulse params
     n = 2^13
     T0 = 1.e-10
     P0 = 1.e-2
-    T = 60T0
+    T = 5.e-9
     p = Pulse(0, T0, P0, 0., 0., n, T)
+    @show pulse_params(T0, P0, betha_a, gamma_a)
 
     outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
     # outdir = "/mnt/hgfs/VM_shared/out/"
-    foutA   = FileOutput(outdir, "A")
-    foutS   = FileOutput(outdir, "S")
-    foutP   = FileOutput(outdir, "P")
+    foutA   = FileOutput(outdir, "A", true)
+    foutS   = FileOutput(outdir, "S", true)
+    foutP   = FileOutput(outdir, "P", true)
+
+    es = PulseSensor()
+    pol = Polarizer()
     # run
-    laser = LaserElement[foutP, fiber_active, foutA, c, sa, foutS, fiber_passive]   
+    laser = LaserElement[pol, foutP, es, fiber_active, es, foutA, cp, sa, foutS, es, fiber_passive]   
     run_laser_scheme!(p, laser, n_iter)
 end
