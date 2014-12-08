@@ -141,15 +141,16 @@ function Yarutkina13scalar(n_iter=1)
     fiber_active = Fiber(La, 0., betha_a, gamma_a, 10^(5.4/10), gain_bw, sat_e, 500)
     fiber_passive = Fiber(Lp, 10^(0.2/10) * 1.e-3, betha_p, gamma_p, 1000)
 
-    sa = SaturableAbsorber(0.1, 3.69)
+    sa = SaturableAbsorber(0.3, 3.69)
     cp = Coupler(0.9)
 
     # seed pulse params
     n = 2^13
     T0 = 1.e-10
-    P0 = 1.e-2
+    P0 = 1.e-10
     T = 5.e-9
-    p = Pulse(0, T0, P0, 0., 0., n, T)
+    #p1 = Pulse(0, T0, P0, 0., 0., n, T)
+    p = NoisePulse(1.e-20, n, T)
     @show pulse_params(T0, P0, betha_a, gamma_a)
 
     outdir = mkpath_today("/mnt/hgfs/VM_shared/out")

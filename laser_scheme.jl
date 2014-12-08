@@ -110,6 +110,16 @@ end
 
 apply_Jones_matrix!(M::JonesMatrix, p::Pulse) = apply_Jones_matrix!(M, p.uX, p.uY)
 
+function +{T}(p1::Pulse{T}, p2::Pulse{T})
+    (length(p1.t) == length(p2.t))              || error("unequal pulse lengths")
+    # isequal(p1.fft_plan!, p1.fft_plan!)         || error("unequal FFT plans")
+    # isequal(p1.ifft_plan!, p1.ifft_plan!)       || error("unequal IFFT plans")
+    _T1 = calc_T(p1.t)
+    _T2 = calc_T(p2.t)
+    abs(_T1 - _T2) / middle(_T1, _T2) < 1.e-10   || error("unequal t grids")
+    Pulse(p1.uX + p2.uX, p1.uY + p2.uY, p1.t, p1.w, p1.fft_plan!, p1.ifft_plan!)
+end
+
 function Pulse{T<:Real}(uX::Vector{Complex{T}}, uY::Vector{Complex{T}},
                         t::Vector{T}, w::Vector{T}, 
                         fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
@@ -148,6 +158,29 @@ Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
                n::Integer, T_::T,
                fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun) =
     Pulse(shape, T0, P0, C0, theta, n, T_, zero(T), fft_plan!, ifft_plan!)
+
+function NoisePulse{T<:Real}(power::T, t::Vector{T}, w::Vector{T},
+                             fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
+    n = length(t)
+    uX = zeros(Complex{T}, n)
+    uY = zeros(Complex{T}, n)
+    for i = 1:length(t)
+        uabs = power * rand()
+        phi = 2pi* rand()
+        theta = 2pi * rand()
+        u = exp(1.im*phi) * uabs
+        uX[i] = u * cos(theta)
+        uY[i] = u * sin(theta)
+    end
+    Pulse(uX, uY, t, w, fft_plan!, ifft_plan!)
+end
+
+function NoisePulse{T<:Real}(power::T, n::Integer, T_::T,
+                             fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
+    t = t_grid(n, T_)
+    w = w_grid(n, T_)
+    NoisePulse(power, t, w, fft_plan!, ifft_plan!)
+end
 
 # other elements ==============================================================
 type SpectralFilter <: LaserElement
