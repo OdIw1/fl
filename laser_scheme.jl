@@ -159,27 +159,49 @@ Pulse{T<:Real}(shape::Integer, T0::T, P0::T, C0::T, theta::T,
                fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun) =
     Pulse(shape, T0, P0, C0, theta, n, T_, zero(T), fft_plan!, ifft_plan!)
 
-function NoisePulse{T<:Real}(power::T, t::Vector{T}, w::Vector{T},
+function NoisePulse{T<:Real}(power::T, scale::T, t::Vector{T}, w::Vector{T},
                              fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
     n = length(t)
-    uX = zeros(Complex{T}, n)
-    uY = zeros(Complex{T}, n)
-    for i = 1:length(t)
+    uX = zeros(Complex{T}, n);                  uY = zeros(Complex{T}, n)
+
+    # create interpolation object
+    T_ = calc_T(t)
+    interp_t_grid = -T_:scale:T_
+    ni = length(interp_t_grid)
+    interp_u_grid = zeros(Complex{T}, ni)
+    interp_theta_grid = zeros(T, ni)
+
+    for i = 1:ni
         uabs = power * rand()
         phi = 2pi* rand()
-        theta = 2pi * rand()
-        u = exp(1.im*phi) * uabs
+        interp_u_grid[i]  = exp(1.im*phi) * uabs
+        interp_theta_grid[i] = 2pi * rand()
+    end
+
+    interp_u_real = Grid.CoordInterpGrid(interp_t_grid, real(interp_u_grid),
+                                     Grid.BCperiodic, Grid.InterpQuadratic)
+    interp_u_imag = Grid.CoordInterpGrid(interp_t_grid, imag(interp_u_grid),
+                                     Grid.BCperiodic, Grid.InterpQuadratic)
+    interp_theta = Grid.CoordInterpGrid(interp_t_grid, interp_theta_grid,
+                                     Grid.BCperiodic, Grid.InterpQuadratic)
+
+    # interpolate pulse between random seed values
+    for i = 1:n
+        tc = t[i]
+        u = interp_u_real[tc] + 1.im*interp_u_imag[tc]
+        theta = interp_theta[tc]
         uX[i] = u * cos(theta)
         uY[i] = u * sin(theta)
     end
+
     Pulse(uX, uY, t, w, fft_plan!, ifft_plan!)
 end
 
-function NoisePulse{T<:Real}(power::T, n::Integer, T_::T,
+function NoisePulse{T<:Real}(power::T, scale::T, n::Integer, T_::T,
                              fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
     t = t_grid(n, T_)
     w = w_grid(n, T_)
-    NoisePulse(power, t, w, fft_plan!, ifft_plan!)
+    NoisePulse(power, scale, t, w, fft_plan!, ifft_plan!)
 end
 
 # other elements ==============================================================

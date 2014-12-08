@@ -1,6 +1,6 @@
 module NLSE
 
-using NumericExtensions, NumericFuns, Devectorize, Dates
+using NumericExtensions, NumericFuns, Devectorize, Dates, Grid
 
 include("laser_scheme.jl")
 include("laser.jl")

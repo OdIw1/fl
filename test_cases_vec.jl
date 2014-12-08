@@ -150,7 +150,7 @@ function Yarutkina13scalar(n_iter=1)
     P0 = 1.e-10
     T = 5.e-9
     #p1 = Pulse(0, T0, P0, 0., 0., n, T)
-    p = NoisePulse(1.e-20, n, T)
+    p = NoisePulse(1.e-20, 1.e-10, n, T)
     @show pulse_params(T0, P0, betha_a, gamma_a)
 
     outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
