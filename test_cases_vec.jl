@@ -127,10 +127,10 @@ end
 function Yarutkina13scalar(n_iter=1)
     # fiber parameters are from 13[Yarutkina, Shtyrina]{Opt.Expr} Numerical Modeling of ...
     wl = 1550e-9
-    gain_bw_wl = 50e-9
+    gain_bw_wl = 30e-9
     gain_bw = bandwidth_wl2fr(wl, gain_bw_wl)
     La = 2.
-    Lp = 100.
+    Lp = 30.
     t_round = (La + Lp) * 1.47 / 3.e8
     sat_e = 20.e-3 * t_round
 
@@ -138,21 +138,21 @@ function Yarutkina13scalar(n_iter=1)
     gamma_a = 9.32e-3
     betha_p = fs_mm2s_m([4.5, 109])
     gamma_p = 2.1e-3
-    fiber_active = Fiber(La, 0., betha_a, gamma_a, 10^(5.4/10), gain_bw, sat_e, 500)
-    fiber_passive = Fiber(Lp, 10^(0.2/10) * 1.e-3, betha_p, gamma_p, 1000)
+    fiber_active = Fiber(La, 0., betha_a, gamma_a, 10^(5.4/10), gain_bw, sat_e, 2000, true)
+    fiber_passive = Fiber(Lp, 10^(0.2/10) * 1.e-3, betha_p, gamma_p, 5000, true)
 
     sa = SaturableAbsorber(0.3, 3.69)
     cp = Coupler(0.9)
 
     # seed pulse params
-    n = 2^13
-    T0 = 1.e-10
+    n = 2^15
+    T0 = 1.e-9
     P0 = 1.e-10
     T = 5.e-9
-    #p1 = Pulse(0, T0, P0, 0., 0., n, T)
-    p = NoisePulse(1.e-20, 1.e-10, n, T)
+    p = Pulse(1, T0, P0, 100., 0., n, T)
+    #p = NoisePulse(1.e-10, 1.e-11, n, T)
     @show pulse_params(T0, P0, betha_a, gamma_a)
-
+    @show bandwidth_wl(n, T, wl)
     outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
     # outdir = "/mnt/hgfs/VM_shared/out/"
     foutA   = FileOutput(outdir, "A", true)
@@ -161,7 +161,14 @@ function Yarutkina13scalar(n_iter=1)
 
     es = PulseSensor()
     pol = Polarizer()
+    filt = SpectralFilter(0.9)
     # run
-    laser = LaserElement[pol, foutP, es, fiber_active, es, foutA, cp, sa, foutS, es, fiber_passive]   
+    laser = LaserElement[pol, foutP, es, fiber_active, es, foutA, 
+                         cp, sa, foutS, es, fiber_passive]   
     run_laser_scheme!(p, laser, n_iter)
+end
+
+function NielsenPCF(n_iter=9999)
+
+
 end

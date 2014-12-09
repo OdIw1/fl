@@ -212,9 +212,18 @@ end
 SpectralFilter() = SpectralFilter(0.8)
 
 type SaturableAbsorber <: LaserElement
-    modulation_depth
-    saturation_power
+    modulation_depth::Real
+    saturation_power::Real
 end
+
+type SESAM <: LaserElement
+    modulation_depth::Real
+    saturation_energy::Real
+    recovery_time::Real
+    unsaturable_loss::Real
+end
+
+SESAM(md, se, rt) = SESAM(md, se, rt, 0.)
 
 type Coupler <: LaserElement
     transmittance

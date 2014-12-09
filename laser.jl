@@ -50,6 +50,24 @@ function propagate_through!(p::Pulse, sa::SaturableAbsorber)
     end
 end
 
+function propagate_through!(p::Pulse, s::SESAM)
+    n = length(p.t)
+    dt = calc_dt(p.t)
+    q = q0 = s.modulation_depth
+    t = s.recovery_time
+    E = s.saturation_energy
+    
+    for i = 1:n
+        P = abs2(p.uX[i]) + abs2(p.uY[i])
+        dq = (q0 - q)/t - q*P/E
+        T = 1 - q - s.unsaturable_loss
+        q += dq*dt
+        
+        p.uX[i] *= T
+        p.uY[i] *= T
+    end
+end
+
 function propagate_through!(p::Pulse, c::Coupler)
     n = length(p.t)
     BLAS.scal!(n, c.transmittance, p.uX, 1)
