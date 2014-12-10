@@ -2,7 +2,13 @@ function wl2fr(wl) 2pi * 3.e8 / wl end
 # inverse calculation is the same
 function fr2wl(fr) 2pi * 3.e8 / fr end
 
-function bandwidth_wl2fr(wl, dwl) abs(wl2fr(wl + dwl/2) - wl2fr(wl - dwl/2)) end
+function bandwidth_wl2fr(wl, dwl) 
+    abs(wl2fr(wl + dwl/2) - wl2fr(wl - dwl/2))
+end
+
+function bandwidth_wl2fr_derivative(wl, dwl)
+    2pi * 3.e8 * dwl / wl^2
+end
 
 function bandwidth_wl(n, T, wl0)
     dfr = pi * n / (2T)
@@ -16,6 +22,7 @@ end
 ps_km2s_m(betha) = betha_convert(betha, 1.e-12, 1.0e3)
 ps_m2s_m(betha)  = betha_convert(betha, 1.e-12, 1.0)
 fs_mm2s_m(betha) = betha_convert(betha, 1.e-15, 1.0e-3)
+fs_cm2s_m(betha) = betha_convert(betha, 1.e-15, 1.e-2)
 
 function pulse_params(T0, P0, betha::Array, gamma)
     ld = zeros(Float64, length(betha))
@@ -91,9 +98,7 @@ end
 
 function fftshift!(u)
     n = length(u)
-    if mod(n, 2) != 0 
-        throw(ArgumentError("fftshift! is defined only for even-length arrays"))
-    end
+    mod(n, 2) == 0 || Error("fftshift! is defined only for even-length arrays")
 
     shift = div(n, 2)
     for i = 1:shift

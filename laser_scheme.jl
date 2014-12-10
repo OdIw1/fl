@@ -205,11 +205,18 @@ function NoisePulse{T<:Real}(power::T, scale::T, n::Integer, T_::T,
 end
 
 # other elements ==============================================================
-type SpectralFilter <: LaserElement
-    bandwidth::Real
+type RectangularSpectralFilter <: LaserElement
+    bandwidth_ratio::Real
 end
 
-SpectralFilter() = SpectralFilter(0.8)
+RectangularSpectralFilter() = RectangularSpectralFilter(0.8)
+
+type GaussianSpectralFilter <: LaserElement
+    bandwidth_fr::Real
+end
+
+GaussianSpectralFilter(wl0, bandwidth_wl) = 
+    GaussianSpectralFilter(bandwidth_wl2fr_derivative(wl0, bandwidth_wl))
 
 type SaturableAbsorber <: LaserElement
     modulation_depth::Real
@@ -218,7 +225,7 @@ end
 
 type SESAM <: LaserElement
     modulation_depth::Real
-    saturation_energy::Real
+    saturation_power::Real
     recovery_time::Real
     unsaturable_loss::Real
 end

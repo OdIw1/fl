@@ -1,17 +1,17 @@
 # split-step Fourier method
 
 function ssfm(u, L, h, t_grid, w_grid,
-              alpha, beta, gamma, steep, t_raman,
+              alpha, betha, gamma, steep, t_raman,
               fft_plan!, ifft_plan!)
 
     nz = int(L/h)
-    dt = t_grid[end] - t_grid[end - 1]
+    dt = calc_dt(t_grid)
     _u = similar(u)
     _uabs2 = similar(u)
     _duabs2 = similar(u)
     _du = similar(u)
 
-    d_exp = dispersion_exponent(w_grid, alpha, beta)
+    d_exp = dispersion_exponent(w_grid, alpha, betha)
     disp_full = exp(h * d_exp)
     disp_half = exp(h/2. * d_exp)
     disp_minus_half = exp(-h/2. * d_exp)
@@ -29,6 +29,9 @@ function D!(u, disp, fft_plan!, ifft_plan!)
     ifft_plan!(u)
     @devec u[:] = disp .* u
     fft_plan!(u)
+end
+
+function N_ssfm_simple!(u)
 end
 
 function N_ssfm_raman!(u, _uabs2, _duabs2, _du, h, dt, gamma, steep, t_raman)

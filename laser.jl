@@ -27,14 +27,23 @@ function propagate_through!(p::Pulse, fout::FileOutput)
     fout.iteration += 1
 end
 
-function propagate_through!(p::Pulse, sf::SpectralFilter)
+function propagate_through!(p::Pulse, F::RectangularSpectralFilter)
     n = length(p.w)
-    dn = integer(n * 0.5(1. - sf.bandwidth))
+    dn = integer(n * 0.5(1. - F.bandwidth_ratio))
     mid = div(n, 2)
 
     p.ifft_plan!(p.uX);                     p.ifft_plan!(p.uY)
     for i = (mid-dn+1):(mid+dn)
         p.uX[i] = 0.im;                     p.uY[i] = 0.im
+    end
+    p.fft_plan!(p.uX);                      p.fft_plan!(p.uY)
+end
+
+function propagate_through!(p::Pulse, F::GaussianSpectralFilter)
+    p.ifft_plan!(p.uX);                     p.ifft_plan!(p.uY)
+    for i = 1:length(p.t)
+        T = exp(-(p.w[i] / F.bandwidth_fr)^2)
+        p.uX[i] *= T;                       p.uY[i] *= T
     end
     p.fft_plan!(p.uX);                      p.fft_plan!(p.uY)
 end
@@ -55,7 +64,7 @@ function propagate_through!(p::Pulse, s::SESAM)
     dt = calc_dt(p.t)
     q = q0 = s.modulation_depth
     t = s.recovery_time
-    E = s.saturation_energy
+    E = s.saturation_power * t
     
     for i = 1:n
         P = abs2(p.uX[i]) + abs2(p.uY[i])
@@ -79,7 +88,7 @@ function propagate_through!(p::Pulse, s::PulseSensor)
     n = length(p.t)
     EX = sqr(BLAS.nrm2(n, p.uX, 1)) * dt;           EY = sqr(BLAS.nrm2(n, p.uY, 1)) * dt
     energy = EX + EY
-    print("E, nJ: $(energy / 1.e-9)\n")
+    print("E, nJ: $(energy / 1.e-9)=$EX+$EY\n")
 end
 
 function run_laser_scheme!(p::Pulse, laser::LaserScheme, n_iter=1)
