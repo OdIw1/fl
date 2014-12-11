@@ -99,7 +99,7 @@ function Yarutkina13_vec(n_iter=1, a1=pi/6, a2=0, a3=0)
     gamma_p = 2.1e-3
 
     fiber_active = Fiber(La, 0., betha_a, gamma_a, 10^(5.4/10), gain_bw, sat_e, 2000, true)
-    fiber_passive = Fiber(Lp, 10^(0.2/10) * 1.e-3, betha_p, gamma_p, 5000, true)
+    fiber_passive = FiberPassive(Lp, 10^(0.2/10) * 1.e-3, betha_p, gamma_p, 5000, true)
 
     PC1 = QuarterWavePlate(a1)
 
@@ -149,8 +149,8 @@ function Yarutkina13_scalar(n_iter=1)
     gamma_p = 2.1e-3
     # seems like gain and absorption is provided in field, not intensity related units, 
     # so gain and alpha may 2 factor
-    fiber_active = Fiber(La, 0., betha_a, gamma_a, 10^(5.4/10), gain_bw, sat_e, 500, true)
-    fiber_passive = Fiber(Lp, 10^(0.2/10) * 1.e-3, betha_p, gamma_p, 1000, true)
+    fiber_active = Fiber(La, 0., betha_a, gamma_a, 10^(5.4/10), gain_bw, sat_e, 500, ADAPTIVE_STEP)
+    fiber_passive = FiberPassive(Lp, 10^(0.2/10) * 1.e-3, betha_p, gamma_p, 1000, ADAPTIVE_STEP)
     # try SSFM !!!
     #sa = SaturableAbsorber(0.1, 3.69)
     sat_abs = SaturableAbsorber(0.7, 1000)
@@ -162,8 +162,8 @@ function Yarutkina13_scalar(n_iter=1)
     T0 = 1.e-10
     P0 = 1.e-10
     T = 5.e-9
-    #p = Pulse(1, T0, P0, 0., 0., n, T)
-    p = NoisePulse(1.e-10, 1.e-11, n, T)
+    p = Pulse(1, T0, P0, 0., 0., n, T)
+    #p = NoisePulse(1.e-10, 1.e-11, n, T)
     @show pulse_params(T0, P0, betha_a, gamma_a)
     @show bandwidth_wl(n, T, wl0)
     outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
@@ -174,14 +174,64 @@ function Yarutkina13_scalar(n_iter=1)
 
     S = PulseSensor()
     pol = Polarizer()
-    filt = GaussianSpectralFilter(wl0, 2.e-9)
+    filt = GaussianSpectralFilter(wl0, 5.e-9)
     # run
     laser = LaserElement[pol, S, fiber_active, S, foutA, 
                          fiber_passive, foutP, S, sat_abs, filt, S, foutS, coupler]   
     run_laser_scheme!(p, laser, n_iter)
 end
 
-function NielsenPCF(n_iter=9999)
+function Chong08(n_iter=9999)
+    # 08[Chong, Renninger, Wise]{J.Opt.Soc.Am.B,25,2} Properties of normal-dispersion
+    #   femtosecond lasers
+    wl0 = 1030.e-9 # Ytterbium laser
+    bw_wl = 50.e-9 # half of FWHM in article
+    bw_fr = bandwidth_wl2fr_derivative(wl0, bw_wl)
 
+    Lp1 = 3.
+    La = 0.6
+    Lp2 = 1.
 
+    t_round = (Lp1 + La + Lp2) * 1.47 / 3.e8
+    betha = fs_cm2s_m([230.])
+    gamma = 4.7e-3
+    
+    Fp1 = FiberPassive(Lp1, 0., betha, gamma, 1000, ADAPTIVE_STEP)
+    Fp2 = FiberPassive(Lp2, 0., betha, gamma, 1000, ADAPTIVE_STEP)
+    
+    E_sat = 0.25e-9 # varied from 0.25 nJ to 6 nJ
+    gain = 10^(30./3) * La
+    Fa = Fiber(La, 0., betha, gamma, gain, bw_fr, E_sat, 500, ADAPTIVE_STEP)
+
+    SA = SaturableAbsorber(0.7, 0.1e3) # varied from 0.1 to 2.4 kW
+    coupler = Coupler((1-0.7)*(1-0.1)) # p.142, 70% out and 10% loss after that
+    SF = GaussianSpectralFilter(wl0, 8.e-9) # 8 to 25 nm
+    polarizer = Polarizer()
+
+    outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
+    o1   = FileOutput(outdir, "1", ONLY_X)
+    o2   = FileOutput(outdir, "2", ONLY_X)
+    o3   = FileOutput(outdir, "3", ONLY_X)
+    o4   = FileOutput(outdir, "4", ONLY_X)
+    o5   = FileOutput(outdir, "5", ONLY_X)
+
+    E1 = PulseSensor("SMF1")
+    E2 = PulseSensor("gain")
+    E3 = PulseSensor("SMF2")
+    E4 = PulseSensor("SA")
+    E5 = PulseSensor("SF+coupler")
+
+    laser = LaserElement[polarizer, Fp1, E1, o1, Fa, E2, o2, Fp2, E3, o3,
+                         SA, E4, o4, coupler, SF, E5, o5]
+
+    n = 2^14
+    T0 = 1.e-12
+    P0 = 1.e-10
+    T = 10.e-12
+    p = Pulse(1, T0, P0, 0., 0., n, T)
+    #p = NoisePulse(1.e-10, 1.e-11, n, T)
+    @show pulse_params(T0, P0, betha, gamma)
+    @show bandwidth_wl(n, T, wl0)
+
+    run_laser_scheme!(p, laser, n_iter)
 end

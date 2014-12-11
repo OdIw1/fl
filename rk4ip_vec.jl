@@ -2,6 +2,9 @@
 
 DEBUG = false
 
+ADAPTIVE_STEP = true
+FIXED_STEP = false
+
 # maybe i should introduce separate bethas for X and Y axes
 # default initial step value may be suboptimal
 
@@ -31,7 +34,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
     end
 
     hmin = L / max_steps
-    h = adaptive_step ? max(h0, hmin): hmin
+    h = (adaptive_step == ADAPTIVE_STEP) ? max(h0, hmin): hmin
 
     d_no_gain = dispersion_without_gain(w, alpha, betha)
     g_spec = gain_spectral_factor(w, g_bandwidth)
@@ -78,7 +81,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
             err = sqrt((sqr(errX) + sqr(errY)) / 2)
         end
 
-        if adaptive_step & (err > 1) & (h > hmin)
+        if (adaptive_step == ADAPTIVE_STEP) & (err > 1) & (h > hmin)
             n_steps_rejected += 1
             h *= scale_step_fail(err, err_prev)
             hd2 = h/2
@@ -91,7 +94,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
             push!(steps, h)
             DEBUG && mod(n_steps, 100) == 0 && @show (n_steps, z, h)    
 
-            if adaptive_step
+            if (adaptive_step == ADAPTIVE_STEP)
                 err_prev = err
                 BLAS.blascopy!(n, u_half2X, 1, uX, 1);      BLAS.blascopy!(n, u_half2Y, 1, uY, 1)
 

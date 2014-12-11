@@ -88,7 +88,7 @@ function propagate_through!(p::Pulse, s::PulseSensor)
     n = length(p.t)
     EX = sqr(BLAS.nrm2(n, p.uX, 1)) * dt;           EY = sqr(BLAS.nrm2(n, p.uY, 1)) * dt
     energy = EX + EY
-    print("E, nJ: $(energy / 1.e-9)=$EX+$EY\n")
+    print("$(s.name)\t E, nJ: $(energy / 1.e-9) = $EX + $EY\n")
 end
 
 function run_laser_scheme!(p::Pulse, laser::LaserScheme, n_iter=1)
