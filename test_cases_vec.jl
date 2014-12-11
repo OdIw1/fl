@@ -200,14 +200,14 @@ function Chong08(n_iter=9999)
     Fp1 = FiberPassive(Lp1, 0., betha, gamma, int(steps_per_meter * Lp1), ADAPTIVE_STEP)
     Fp2 = FiberPassive(Lp2, 0., betha, gamma, int(steps_per_meter * Lp2), ADAPTIVE_STEP)
     
-    E_sat = 0.1e-9 # varied from 0.25 nJ to 6 nJ
+    E_sat = 0.25e-9 # varied from 0.25 nJ to 6 nJ
     gain = 10^(30./10) * La
     Fa = Fiber(La, 0., betha, gamma, gain, bw_fr, E_sat,
                int(steps_per_meter * La), ADAPTIVE_STEP)
 
     SA = SaturableAbsorber(0.7, 1.0e3) # varied from 0.1 to 2.4 kW
     coupler = Coupler((1-0.7)*(1-0.1)) # p.142, 70% out and 10% loss after that
-    SF = GaussianSpectralFilter(wl0, 20.e-9) # 8 to 25 nm
+    SF = GaussianSpectralFilter(wl0, 10.e-9) # 8 to 25 nm
     polarizer = Polarizer()
 
     outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
@@ -229,13 +229,9 @@ function Chong08(n_iter=9999)
                          SA, E4, o4, SF, E5, o5, coupler, E6, o6]
 
     n = 2^14
-    T0 = 1.e-12
-    P0 = 1.e-10
     T = 5.e-11
-    # p = Pulse(1, T0, P0, 0., 0., n, T)
-    # p = NoisePulse(1.e-10, 1.e-12, n, T)
+    # p = Pulse(1, 1.e-12, 1.e-10, 0., 0., n, T)
     p = WhiteNoisePulse(1.e-10, n, T)
-    @show pulse_params(T0, P0, betha, gamma)
     @show bandwidth_wl(n, T, wl0)
 
     run_laser_scheme!(p, laser, n_iter)

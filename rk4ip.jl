@@ -1,33 +1,41 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
+RK4IP_SCAL_DEBUG = false
 
-@eval function rk4ip(u, L, h, t_grid, w_grid, 
-                     alpha, betha, gamma, steep, t_raman,
-                     fft_plan!, ifft_plan!, nt_plot=2^9, nz_plot=2^9)
+rk4ip_scal!(p::Pulse, f::Fiber) = 
+    rk4ip_scal!(p.uX, p.t, p.w, f.L, 1e-6f.L, f.max_steps, f.adaptive_step,
+                f.alpha, f.betha, f.gamma, 0., 0., 
+                f.gain, f.gain_bandwidth, f.saturation_energy,
+                p.fft_plan!, p.ifft_plan!, 0, 0)
+
+@eval function rk4ip_scal!(u, t, w, L, h0, max_steps, adaptive_step,
+                          alpha, betha, gamma, steep, t_raman,
+                          gain, gain_bw, saturation_energy,
+                          fft_plan!, ifft_plan!, nt_plot=2^8, nz_plot=2^8)
     z = 0.
     n = length(u)
-    T = (t_grid[end] - t_grid[1]) / 2
-    dt = (t_grid[end] - t_grid[1]) / (n - 1)
+    T = calc_T(t)
+    dt = calc_dt(t)
 
     n_steps = n_steps_rejected = 0
     steps = Float64[]
-    err_prev = 1.
+    err = err_prev = 1.
 
     $([:($a = similar(u)) for a in 
         [:U, :_u1, :_k1, :_k2, :_k3, :_k4, :_uabs2, :_du, :_ue_cplx,
          :u_full, :u_half, :u_half2]]...)
 
-    N! = let _uabs2 = _uabs2, _du = _du, 
-             dt = dt, gamma = gamma, steep = steep, t_raman = t_raman
-        if t_raman == 0. && steep == 0.
-            (u_, h_) -> N_simple!(u_, h_, dt, gamma, _uabs2)
-        elseif steep == 0.
-            (u_, h_) -> N_raman!(u_, h_, dt, gamma, t_raman, _uabs2, _du)
-        else
-            (u_, h_) -> N_raman_steep!(u_, h_, dt, gamma, t_raman, steep, _uabs2, _du)
-        end
+    N! = let _uabs2 = _uabs2, _du = _du, dt = dt, gamma = gamma
+            (u_, h_) -> N_rk4ip_simple_scal!(u_, h_, dt, gamma, _uabs2)
     end
 
-    d_exp = D_exp_no_gain(w_grid, alpha, betha)
+    hmin = L / max_steps
+    h = (adaptive_step == ADAPTIVE_STEP) ? max(h0, hmin): hmin
+
+    d_no_gain = D_exp_no_gain(w, alpha, betha)
+    g_spec = gain_spectral_factor(w, gain, gain_bw)
+    d_exp = similar(u)
+    dispersion_exp_scal!(d_exp, d_no_gain, g_spec, u, dt, saturation_energy)
+
     disp_full = exp(h/2 * d_exp)
     disp_half = exp(h/4 * d_exp)
 
@@ -44,21 +52,25 @@
         U_plot[i_plot,:] = U[t_plot_ind]
     end 
 
-    @time @profile while z < L
+    @time while z < L
         # full step
         rk4ip_step!(u, u_full, h, disp_full, N!, 
                     fft_plan!, ifft_plan!,
                     _u1, _k1, _k2, _k3, _k4)
+
         # 2 half-steps
-        rk4ip_step!(u, u_half, h/2, disp_half, N!,
-                    fft_plan!, ifft_plan!,
-                    _u1, _k1, _k2, _k3, _k4)
-        rk4ip_step!(u_half, u_half2, h/2, disp_half, N!,
-                    fft_plan!, ifft_plan!,
-                    _u1, _k1, _k2, _k3, _k4)
-        
-        err = integration_error_global(u_full, u_half2, _ue_cplx)
-        if err > 1
+        if (adaptive_step == ADAPTIVE_STEP)
+            rk4ip_step!(u, u_half, h/2, disp_half, N!,
+                        fft_plan!, ifft_plan!,
+                        _u1, _k1, _k2, _k3, _k4)
+            rk4ip_step!(u_half, u_half2, h/2, disp_half, N!,
+                        fft_plan!, ifft_plan!,
+                        _u1, _k1, _k2, _k3, _k4)
+            
+            err = integration_error_global(u_full, u_half2, _ue_cplx)
+        end
+
+        if (adaptive_step == ADAPTIVE_STEP) & (err > 1) & (h > hmin)
             n_steps_rejected += 1
             h *= scale_step_fail(err, err_prev)
             hd2 = h/2
@@ -69,20 +81,25 @@
             z += h
             n_steps += 1
             push!(steps, h)
-            mod(n_steps, 100) == 0 && @show (n_steps, z, h)
+            RK4IP_VEC_DEBUG && mod(n_steps, 100) == 0 && @show (n_steps, z, h)
 
-            h *= scale_step_ok(err, err_prev)
-            h = min(L - z, h)
+            if (adaptive_step == ADAPTIVE_STEP)
+                err_prev = err
+                BLAS.blascopy!(n, u_half2, 1, u, 1)
+
+                h = max(h* scale_step_ok(err, err_prev), hmin)
+                h = min(L - z, h)
+            else
+                BLAS.blascopy!(n, u_full, 1, u, 1)
+            end
+
+            dispersion_exp_scal!(d_exp, d_no_gain, g_spec, u, dt, saturation_energy)
             hd2 = h/2
             hd4 = h/4
             @devec disp_full[:] = exp(hd2 .* d_exp)
             @devec disp_half[:] = exp(hd4 .* d_exp)
 
-            err_prev = err
-            BLAS.blascopy!(length(u), u_half2, 1, u, 1)
-
             if do_plot && z >= i_plot * dz_plot
-                # println("step: $n_steps, z: $z")
                 i_plot += 1
                 u_plot[i_plot, :] = u[t_plot_ind]
                 spectrum!(u, U, ifft_plan!, T)
@@ -91,7 +108,7 @@
         end
     end
 
-    return (u, u_plot, U_plot, n_steps, n_steps_rejected, steps)
+    return u_plot, U_plot, n_steps, n_steps_rejected, steps
 end
 
 function rk4ip_step!(u, uf, h, disp, N!, fft_plan!, ifft_plan!,
@@ -141,14 +158,14 @@ function rk4ip_step!(u, uf, h, disp, N!, fft_plan!, ifft_plan!,
     BLAS.axpy!(n, 1/6 + 0.im, k4, 1, uf, 1)
 end
 
-function N_simple!(u, h, dt, gamma, _uabs2)
+function N_rk4ip_simple_scal!(u, h, dt, gamma, _uabs2)
     n = length(u)
     map!(Abs2Fun(), _uabs2, u)
     k = 1im * h * gamma
     @devec u[:] = k .* u .* _uabs2
 end    
 
-function N_raman!(u, h, dt, gamma, t_raman, _uabs2, _du)
+function N_rk4ip_raman_scal!(u, h, dt, gamma, t_raman, _uabs2, _du)
     n = length(u)
 
     # _uabs2 = |u|^2 - t_raman * d(|u|^2)/dt
@@ -160,7 +177,7 @@ function N_raman!(u, h, dt, gamma, t_raman, _uabs2, _du)
     @devec u[:] = k .* u .* _uabs2
 end
 
-function N_raman_steep!(u, h, dt, gamma, t_raman, steep, _uabs2, _du)
+function N_rk4ip_raman_steep_scal!(u, h, dt, gamma, t_raman, steep, _uabs2, _du)
     # steep = 1.im / w0
     n = length(u)
 

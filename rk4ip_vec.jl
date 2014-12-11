@@ -1,9 +1,5 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
-
-DEBUG = false
-
-ADAPTIVE_STEP = true
-FIXED_STEP = false
+RK4IP_VEC_DEBUG = false
 
 # maybe i should introduce separate bethas for X and Y axes
 # default initial step value may be suboptimal
@@ -41,7 +37,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
     d_no_gain = D_exp_no_gain(w, alpha, betha)
     g_spec = gain_spectral_factor(w, g, g_bandwidth)
     d_exp = similar(uX)
-    dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, saturation_energy)
+    dispersion_exp_vec!(d_exp, d_no_gain, g_spec, uX, uY, dt, saturation_energy)
     # d_exp = dispersion_exponent(w, alpha, betha)
 
     disp_full = exp(h/2 * d_exp)
@@ -70,7 +66,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
                     fft_plan!, ifft_plan!,
                     _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
         # 2 half-steps
-        if adaptive_step
+        if (adaptive_step == ADAPTIVE_STEP)
             rk4ip_step!(uX, uY, u_halfX, u_halfY, h/2, disp_half, N!, z,
                         fft_plan!, ifft_plan!,
                         _u1X, _u1Y, _k1X, _k1Y, _k2X, _k2Y, _k3X, _k3Y, _k4X, _k4Y)
@@ -83,7 +79,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
             err = sqrt((sqr(errX) + sqr(errY)) / 2)
         end
 
-        if (adaptive_step == ADAPTIVE_STEP) & (err > 1) & (h > hmin)
+        if (adaptive_step == ADAPTIVE_STEP) && (err > 1) && (h > hmin)
             n_steps_rejected += 1
             h *= scale_step_fail(err, err_prev)
             hd2 = h/2
@@ -94,7 +90,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
             z += h
             n_steps += 1
             push!(steps, h)
-            DEBUG && mod(n_steps, 100) == 0 && @show (n_steps, z, h)    
+            RK4IP_VEC_DEBUG && mod(n_steps, 100) == 0 && @show (n_steps, z, h)    
 
             if (adaptive_step == ADAPTIVE_STEP)
                 err_prev = err
@@ -106,7 +102,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
                 BLAS.blascopy!(n, u_fullX, 1, uX, 1);       BLAS.blascopy!(n, u_fullY, 1, uY, 1)
             end
 
-            dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, saturation_energy)
+            dispersion_exp_vec!(d_exp, d_no_gain, g_spec, uX, uY, dt, saturation_energy)
             hd2 = h/2
             hd4 = h/4
             @devec disp_full[:] = exp(hd2 .* d_exp)
@@ -128,18 +124,6 @@ function handle_plot_data!(i_plot, t_plot_ind, uX, uY, UX, UY,
     u_plotX[i_plot,:] = uX[t_plot_ind];                 u_plotY[i_plot,:] = uY[t_plot_ind]             
     spectrum!(uX, UX, ifft_plan!, T);                   spectrum!(uY, UY, ifft_plan!, T)
     U_plotX[i_plot,:] = UX[t_plot_ind];                 U_plotY[i_plot,:] = UY[t_plot_ind]
-end
-
-function gain_saturation(uX, uY, dt, saturation_energy)
-    n = length(uX)
-    EX = sqr(BLAS.nrm2(n, uX, 1)) * dt;             EY = sqr(BLAS.nrm2(n, uY, 1)) * dt
-    energy = EX + EY
-    1 / (1. + energy / saturation_energy)
-end
-
-function dispersion_exp!(d_exp, d_no_gain, g_spec_factor, uX, uY, dt, saturation_energy)
-    g_sat = gain_saturation(uX, uY, dt, saturation_energy)
-    @devec d_exp[:] = d_no_gain + g_sat .* g_spec_factor
 end
 
 function rk4ip_step!(uX, uY, ufX, ufY, h, disp, N!, z, fft_plan!, ifft_plan!,

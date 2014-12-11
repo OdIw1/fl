@@ -22,27 +22,21 @@ function ssfm!(u, t, w, L, h0, max_steps, adaptive_step,
     g_spec_factor = gain_spectral_factor(w, gain, gain_bw)
 
     # scheme 1/2D => [N, D] loop, -1/2D
-    D!(u, 0.5h, _d_exp, d_no_gain, g_spec_factor, dt, saturation_energy,
+    D_ssfm!(u, 0.5h, _d_exp, d_no_gain, g_spec_factor, dt, saturation_energy,
        fft_plan!, ifft_plan!)
     @time for i in 1:max_steps
         # N_ssfm_raman!(u, _uabs2, _duabs2, _du, h, dt, gamma, steep, t_raman)
         N_ssfm_simple!(u, _uabs2, h, gamma)
-        D!(u, h, _d_exp, d_no_gain, g_spec_factor, dt, saturation_energy,
+        D_ssfm!(u, h, _d_exp, d_no_gain, g_spec_factor, dt, saturation_energy,
            fft_plan!, ifft_plan!)
     end
-    D!(u, -0.5h, _d_exp, d_no_gain, g_spec_factor, dt, saturation_energy,
+    D_ssfm!(u, -0.5h, _d_exp, d_no_gain, g_spec_factor, dt, saturation_energy,
        fft_plan!, ifft_plan!)
 end
 
-function gain_saturation(u, dt, saturation_energy)
-    n = length(u)
-    energy = sqr(BLAS.nrm2(n, u, 1)) * dt
-    1 / (1. + energy / saturation_energy)
-end
-
-function D!(u, h, _d_exp, d_no_gain, g_spec_factor, dt, saturation_energy,
+function D_ssfm!(u, h, _d_exp, d_no_gain, g_spec_factor, dt, saturation_energy,
             fft_plan!, ifft_plan!)
-    g_sat = gain_saturation(u, dt, saturation_energy)
+    g_sat = gain_saturation_scal(u, dt, saturation_energy)
     @devec _d_exp[:] = exp(h .* (d_no_gain + g_sat .* g_spec_factor))
 
     ifft_plan!(u)

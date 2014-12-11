@@ -1,6 +1,31 @@
-type RK4IPTemp{T<:Real}
-    n::Integer 
-    k1X::Vector{Complex{T}}
+ADAPTIVE_STEP = true
+FIXED_STEP = false
+
+function gain_spectral_factor(w, g, g_bandwidth)
+    0.5g ./ (1 + w.^2 / g_bandwidth^2)
+end
+
+function gain_saturation_vec(uX, uY, dt, saturation_energy)
+    n = length(uX)
+    EX = sqr(BLAS.nrm2(n, uX, 1)) * dt;             EY = sqr(BLAS.nrm2(n, uY, 1)) * dt
+    energy = EX + EY
+    1 / (1. + energy / saturation_energy)
+end
+
+function gain_saturation_scal(u, dt, saturation_energy)
+    n = length(u)
+    energy = sqr(BLAS.nrm2(n, u, 1)) * dt
+    1 / (1. + energy / saturation_energy)
+end
+
+function dispersion_exp_vec!(d_exp, d_no_gain, g_spec_factor, uX, uY, dt, saturation_energy)
+    g_sat = gain_saturation_vec(uX, uY, dt, saturation_energy)
+    @devec d_exp[:] = d_no_gain + g_sat .* g_spec_factor
+end
+
+function dispersion_exp_scal!(d_exp, d_no_gain, g_spec_factor, u, dt, saturation_energy)
+    g_sat = gain_saturation_scal(u, dt, saturation_energy)
+    @devec d_exp[:] = d_no_gain + g_sat .* g_spec_factor
 end
 
 function D_exp_no_gain(w, alpha, betha)
@@ -12,10 +37,6 @@ function D_exp_no_gain(w, alpha, betha)
         res += (1.im / factorial(k+1) * betha[k]) * w.^(k+1) # * (-1)^(k+1)
     end
     return res
-end
-
-function gain_spectral_factor(w, g, g_bandwidth)
-    0.5g ./ (1 + w.^2 / g_bandwidth^2)
 end
 
 function df!(u, du, dx)
