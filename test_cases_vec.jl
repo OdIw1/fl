@@ -191,17 +191,19 @@ function Chong08(n_iter=9999)
     Lp1 = 3.
     La = 0.6
     Lp2 = 1.
+    steps_per_meter = 1000
 
     t_round = (Lp1 + La + Lp2) * 1.47 / 3.e8
     betha = fs_cm2s_m([230.])
     gamma = 4.7e-3
     
-    Fp1 = FiberPassive(Lp1, 0., betha, gamma, 1000, ADAPTIVE_STEP)
-    Fp2 = FiberPassive(Lp2, 0., betha, gamma, 1000, ADAPTIVE_STEP)
+    Fp1 = FiberPassive(Lp1, 0., betha, gamma, int(steps_per_meter * Lp1), ADAPTIVE_STEP)
+    Fp2 = FiberPassive(Lp2, 0., betha, gamma, int(steps_per_meter * Lp2), ADAPTIVE_STEP)
     
     E_sat = 0.25e-9 # varied from 0.25 nJ to 6 nJ
     gain = 10^(30./3) * La
-    Fa = Fiber(La, 0., betha, gamma, gain, bw_fr, E_sat, 500, ADAPTIVE_STEP)
+    Fa = Fiber(La, 0., betha, gamma, gain, bw_fr, E_sat,
+               int(steps_per_meter * La), ADAPTIVE_STEP)
 
     SA = SaturableAbsorber(0.7, 0.1e3) # varied from 0.1 to 2.4 kW
     coupler = Coupler((1-0.7)*(1-0.1)) # p.142, 70% out and 10% loss after that

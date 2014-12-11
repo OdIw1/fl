@@ -27,7 +27,7 @@
         end
     end
 
-    d_exp = dispersion_exponent(w_grid, alpha, betha)
+    d_exp = D_exp_no_gain(w_grid, alpha, betha)
     disp_full = exp(h/2 * d_exp)
     disp_half = exp(h/4 * d_exp)
 
@@ -92,17 +92,6 @@
     end
 
     return (u, u_plot, U_plot, n_steps, n_steps_rejected, steps)
-end
-
-function dispersion_exponent(w, alpha, betha)
-    # pay attention to the order of Fourier transforms that determine
-    # the sign of differentiation operator
-    # -alpha/2 + 1im/2 * betha[1] * w.^2 + 1im/6 * betha[2] * w.^3 + ...
-    res = - alpha/2 + zeros(Complex{Float64}, length(w))
-    for k in 1:length(betha)
-        res += (1.im / factorial(k+1) * betha[k]) * w.^(k+1) # * (-1)^(k+1)
-    end
-    return res
 end
 
 function rk4ip_step!(u, uf, h, disp, N!, fft_plan!, ifft_plan!,

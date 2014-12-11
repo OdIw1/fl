@@ -3,6 +3,21 @@ type RK4IPTemp{T<:Real}
     k1X::Vector{Complex{T}}
 end
 
+function D_exp_no_gain(w, alpha, betha)
+    # pay attention to the order of Fourier transforms that determine
+    # the sign of differentiation operator
+    res = zeros(Complex{Float64}, length(w))
+    res -= alpha/2
+    for k in 1:length(betha)
+        res += (1.im / factorial(k+1) * betha[k]) * w.^(k+1) # * (-1)^(k+1)
+    end
+    return res
+end
+
+function gain_spectral_factor(w, g, g_bandwidth)
+    0.5g ./ (1 + w.^2 / g_bandwidth^2)
+end
+
 function df!(u, du, dx)
     # du = d(u)/dx, u and du MUST be different arrays
     du[1] = (u[2] - u[end]) / (2dx)

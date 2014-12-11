@@ -10,11 +10,13 @@ FIXED_STEP = false
 
 rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
     rk4ip_vec!(p.uX, p.uY, p.t, p.w, f.L, 1e-6f.L, f.max_steps, f.adaptive_step,
-               f.alpha, f.betha, f.dbetha, f.gamma, f.gain, f.gain_bandwidth, f.saturation_energy,
+               f.alpha, f.betha, f.dbetha, f.gamma, 
+               f.gain, f.gain_bandwidth, f.saturation_energy,
                p.fft_plan!, p.ifft_plan!, nt_plot, nz_plot)
 
 @eval function rk4ip_vec!(uX, uY, t, w, L, h0, max_steps, adaptive_step, 
-                          alpha, betha, dbetha, gamma, g, g_bandwidth, saturation_energy,
+                          alpha, betha, dbetha, gamma, 
+                          g, g_bandwidth, saturation_energy,
                           fft_plan!, ifft_plan!, nt_plot=2^8, nz_plot=2^8)
     z = 0.
     n = length(uX)
@@ -36,10 +38,10 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
     hmin = L / max_steps
     h = (adaptive_step == ADAPTIVE_STEP) ? max(h0, hmin): hmin
 
-    d_no_gain = dispersion_without_gain(w, alpha, betha)
-    g_spec = gain_spectral_factor(w, g_bandwidth)
+    d_no_gain = D_exp_no_gain(w, alpha, betha)
+    g_spec = gain_spectral_factor(w, g, g_bandwidth)
     d_exp = similar(uX)
-    dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, g, saturation_energy)
+    dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, saturation_energy)
     # d_exp = dispersion_exponent(w, alpha, betha)
 
     disp_full = exp(h/2 * d_exp)
@@ -104,7 +106,7 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
                 BLAS.blascopy!(n, u_fullX, 1, uX, 1);       BLAS.blascopy!(n, u_fullY, 1, uY, 1)
             end
 
-            dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, g, saturation_energy)
+            dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, saturation_energy)
             hd2 = h/2
             hd4 = h/4
             @devec disp_full[:] = exp(hd2 .* d_exp)
@@ -128,31 +130,16 @@ function handle_plot_data!(i_plot, t_plot_ind, uX, uY, UX, UY,
     U_plotX[i_plot,:] = UX[t_plot_ind];                 U_plotY[i_plot,:] = UY[t_plot_ind]
 end
 
-function dispersion_without_gain(w, alpha, betha)
-    # pay attention to the order of Fourier transforms that determine
-    # the sign of differentiation operator
-    res = zeros(Complex{Float64}, length(w))
-    res -= alpha/2
-    for k in 1:length(betha)
-        res += (1.im / factorial(k+1) * betha[k]) * w.^(k+1) # * (-1)^(k+1)
-    end
-    return res
-end
-
-function gain_spectral_factor(w, g_bandwidth)
-    1 ./ (1 + w.^2 / g_bandwidth^2)
-end
-
-function gain_saturated(uX, uY, dt, g, saturation_energy)
+function gain_saturation(uX, uY, dt, saturation_energy)
     n = length(uX)
     EX = sqr(BLAS.nrm2(n, uX, 1)) * dt;             EY = sqr(BLAS.nrm2(n, uY, 1)) * dt
     energy = EX + EY
-    0.5g / (1. + energy / saturation_energy)
+    1 / (1. + energy / saturation_energy)
 end
 
-function dispersion_exp!(d_exp, d_no_gain, g_spec, uX, uY, dt, g, saturation_energy)
-    g_sat = gain_saturated(uX, uY, dt, g, saturation_energy)
-    @devec d_exp[:] = d_no_gain + g_sat .* g_spec
+function dispersion_exp!(d_exp, d_no_gain, g_spec_factor, uX, uY, dt, saturation_energy)
+    g_sat = gain_saturation(uX, uY, dt, saturation_energy)
+    @devec d_exp[:] = d_no_gain + g_sat .* g_spec_factor
 end
 
 function rk4ip_step!(uX, uY, ufX, ufY, h, disp, N!, z, fft_plan!, ifft_plan!,
