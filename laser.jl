@@ -1,10 +1,10 @@
 propagate_through!(p::Pulse, M::JonesMatrix) = apply_Jones_matrix!(M, p)
 
 function propagate_through!(p::Pulse, fiber::Fiber)
-    # u_plotX, u_plotY, U_plotX, U_plotY, n_steps, n_steps_rejected, steps =
-    #     rk4ip_vec!(p, fiber)
-    ssfm!(p, fiber)
-    # print("rk4ip steps: $n_steps\n")    
+    u_plotX, u_plotY, U_plotX, U_plotY, n_steps, n_steps_rejected, steps =
+        rk4ip_vec!(p, fiber)
+    print("rk4ip steps: $n_steps\n")    
+    # ssfm!(p, fiber)
 end
 
 function propagate_through!(p::Pulse, fout::FileOutput)
@@ -80,8 +80,9 @@ end
 
 function propagate_through!(p::Pulse, c::Coupler)
     n = length(p.t)
-    BLAS.scal!(n, c.transmittance, p.uX, 1)
-    BLAS.scal!(n, c.transmittance, p.uY, 1)
+    T = sqrt(c.transmittance)
+    BLAS.scal!(n, T, p.uX, 1)
+    BLAS.scal!(n, T, p.uY, 1)
 end
 
 function propagate_through!(p::Pulse, s::PulseSensor)

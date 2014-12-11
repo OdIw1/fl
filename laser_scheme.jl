@@ -188,6 +188,35 @@ function NoisePulse{T<:Real}(power::T, scale::T, n::Integer, T_::T,
     NoisePulse(power, scale, t, w, fft_plan!, ifft_plan!)
 end
 
+function WhiteNoisePulse{T<:Real}(power::T, t::Vector{T}, w::Vector{T},
+                                  fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
+    n = length(t)
+    uX = zeros(Complex{T}, n);          uY = zeros(Complex{T}, n)
+
+    u = similar(uX)
+    fft_plan! == nothing && (fft_plan! = plan_fft!(u, (1,), FFTW.MEASURE))
+    ifft_plan! == nothing && (ifft_plan! = plan_ifft!(u, (1,), FFTW.MEASURE))
+
+    for i = 1:n
+        uabs = power * rand()
+        phi = 2pi* rand()
+        u  = exp(1.im*phi) * uabs
+        theta = 2pi * rand()
+
+        uX[i] = u * cos(theta);         uY[i] = u * sin(theta)
+    end
+    fft_plan!(uX);                      fft_plan!(uY)              
+
+    Pulse(uX, uY, t, w, fft_plan!, ifft_plan!)
+end
+
+function WhiteNoisePulse{T<:Real}(power::T, n::Integer, T_::T,
+                                  fft_plan! = nothing::FFTFun, ifft_plan! = nothing::FFTFun)
+    t = t_grid(n, T_)
+    w = w_grid(n, T_)
+    WhiteNoisePulse(power, t, w, fft_plan!, ifft_plan!)
+end
+
 # FileOutput ==================================================================
 ONLY_X = true
 

@@ -191,7 +191,7 @@ function Chong08(n_iter=9999)
     Lp1 = 3.
     La = 0.6
     Lp2 = 1.
-    steps_per_meter = 1000
+    steps_per_meter = 500
 
     t_round = (Lp1 + La + Lp2) * 1.47 / 3.e8
     betha = fs_cm2s_m([230.])
@@ -200,14 +200,14 @@ function Chong08(n_iter=9999)
     Fp1 = FiberPassive(Lp1, 0., betha, gamma, int(steps_per_meter * Lp1), ADAPTIVE_STEP)
     Fp2 = FiberPassive(Lp2, 0., betha, gamma, int(steps_per_meter * Lp2), ADAPTIVE_STEP)
     
-    E_sat = 0.25e-9 # varied from 0.25 nJ to 6 nJ
-    gain = 10^(30./3) * La
+    E_sat = 0.1e-9 # varied from 0.25 nJ to 6 nJ
+    gain = 10^(30./10) * La
     Fa = Fiber(La, 0., betha, gamma, gain, bw_fr, E_sat,
                int(steps_per_meter * La), ADAPTIVE_STEP)
 
-    SA = SaturableAbsorber(0.7, 0.1e3) # varied from 0.1 to 2.4 kW
+    SA = SaturableAbsorber(0.7, 1.0e3) # varied from 0.1 to 2.4 kW
     coupler = Coupler((1-0.7)*(1-0.1)) # p.142, 70% out and 10% loss after that
-    SF = GaussianSpectralFilter(wl0, 8.e-9) # 8 to 25 nm
+    SF = GaussianSpectralFilter(wl0, 20.e-9) # 8 to 25 nm
     polarizer = Polarizer()
 
     outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
@@ -216,22 +216,25 @@ function Chong08(n_iter=9999)
     o3   = FileOutput(outdir, "3", ONLY_X)
     o4   = FileOutput(outdir, "4", ONLY_X)
     o5   = FileOutput(outdir, "5", ONLY_X)
+    o6   = FileOutput(outdir, "6", ONLY_X)
 
     E1 = PulseSensor("SMF1")
     E2 = PulseSensor("gain")
     E3 = PulseSensor("SMF2")
     E4 = PulseSensor("SA")
-    E5 = PulseSensor("SF+coupler")
+    E5 = PulseSensor("SF")
+    E6 = PulseSensor("coupler")
 
     laser = LaserElement[polarizer, Fp1, E1, o1, Fa, E2, o2, Fp2, E3, o3,
-                         SA, E4, o4, coupler, SF, E5, o5]
+                         SA, E4, o4, SF, E5, o5, coupler, E6, o6]
 
     n = 2^14
     T0 = 1.e-12
     P0 = 1.e-10
-    T = 10.e-12
-    p = Pulse(1, T0, P0, 0., 0., n, T)
-    #p = NoisePulse(1.e-10, 1.e-11, n, T)
+    T = 5.e-11
+    # p = Pulse(1, T0, P0, 0., 0., n, T)
+    # p = NoisePulse(1.e-10, 1.e-12, n, T)
+    p = WhiteNoisePulse(1.e-10, n, T)
     @show pulse_params(T0, P0, betha, gamma)
     @show bandwidth_wl(n, T, wl0)
 
