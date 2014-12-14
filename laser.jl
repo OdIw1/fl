@@ -55,7 +55,7 @@ function propagate_through!(p::Pulse, sa::SaturableAbsorber)
     n = length(p.t)
     for i = 1:n
         P = abs2(p.uX[i]) + abs2(p.uY[i])
-        A = sa.modulation_depth / (1 + P/sa.saturation_power)
+        A = sa.modulation_depth / (1 + P/sa.saturation_power) + sa.unsaturable_loss
         T = 1 - A
         p.uX[i] *= T
         p.uY[i] *= T

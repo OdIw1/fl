@@ -253,7 +253,10 @@ GaussianSpectralFilter(wl0, bandwidth_wl) =
 type SaturableAbsorber <: LaserElement
     modulation_depth::Real
     saturation_power::Real
+    unsaturable_loss::Real
 end
+
+SaturableAbsorber(md, sp) = SaturableAbsorber(md, sp, 0.)
 
 type SESAM <: LaserElement
     modulation_depth::Real

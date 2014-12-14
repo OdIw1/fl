@@ -326,14 +326,14 @@ function Yarutkina13_scalar(adaptive_step=false, n_iter=9999)
     betha_p = fs_mm2s_m([4.5, 109])
     # seems like gain and absorption is provided in field, not intensity related units, 
     # so gain and alpha may 2 factor
-    Fa = Fiber(La, 0., betha_a, 9.32e-3, 10^(5.4/10), gain_bw, sat_e, 
+    Fa = Fiber(La, 0., betha_a, 9.32e-3, 2*10^(5.4/10), gain_bw, sat_e, 
                int(steps_per_meter * Lp), adaptive_step)
-    Fp = FiberPassive(Lp, 10^(0.2/10) * 1.e-3, betha_p, 2.1e-3,
+    Fp = FiberPassive(Lp, 2*10^(0.2/10) * 1.e-3, betha_p, 2.1e-3,
                       int(steps_per_meter * Lp), adaptive_step)
 
     SA = SaturableAbsorber(0.3, 3.69e3)
     coupler = Coupler(0.1)
-    SF = GaussianSpectralFilter(wl0, 10.e-9) # bylo 50
+    SF = GaussianSpectralFilter(wl0, 100.e-9) # bylo 50
     polarizer = Polarizer()
 
     outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
@@ -356,7 +356,60 @@ function Yarutkina13_scalar(adaptive_step=false, n_iter=9999)
     T0 = 1.e-10
     P0 = 1.e-10
     T = 5.e-9
-    # p = Pulse(1, 1.e-10, 1.e-10, 0., 0., n, T)
+    p = Pulse(1, 1.e-9, 1.e-10, 0., 0., n, T)
+    # p = WhiteNoisePulse(1.e-10, n, T)
+    
+    @show bandwidth_wl(n, T, wl0)
+    run_laser_scheme!(p, laser, n_iter)
+end
+
+function Felleher14(adaptive_step=false, n_iter=9999)
+    # fiber parameters are from 14[Felleher et al.]{Opt.Lett} Chirp pulse
+    # formation dynamics in ultra-long mode-locked fiber lasers
+    wl0 = 1550.e-9
+    gain_bw_wl = 40.e-9
+    gain_bw = bandwidth_wl2fr_derivative(wl0, gain_bw_wl)
+
+    La = 2.
+    Lp = 1200.
+    t_round = (La + Lp) * 1.47 / 3.e8
+    sat_e = 200.e-12
+
+    steps_per_meter = 500
+
+    betha = ps_m2s_m([0.018])
+    gamma = 3.e-3
+    Fa = Fiber(La, 0., betha, gamma, 10^(30./10), gain_bw, sat_e, 
+               1000, adaptive_step)
+    Fp = FiberPassive(Lp, 0., betha, gamma,
+                      3000, adaptive_step)
+
+    SA = SaturableAbsorber(0.4, 6., 0.45)
+    coupler = Coupler(1 - 1./ 10^(3./10))
+    SF = GaussianSpectralFilter(wl0, 10.e-9) # THIS IS IMPORTANT
+    polarizer = Polarizer()
+
+    outdir = mkpath_today("/mnt/hgfs/VM_shared/out")
+    o1   = FileOutput(outdir, "1", ONLY_X)
+    o2   = FileOutput(outdir, "2", ONLY_X)
+    o3   = FileOutput(outdir, "3", ONLY_X)
+    o4   = FileOutput(outdir, "4", ONLY_X)
+    o5   = FileOutput(outdir, "5", ONLY_X)
+
+    E1 = PulseSensor("SMF1")
+    E2 = PulseSensor("gain")
+    E3 = PulseSensor("SA")
+    E4 = PulseSensor("SF")
+    E5 = PulseSensor("coupler")
+
+    laser = LaserElement[polarizer, Fp, E1, o1, Fa, E2, o2, 
+                         SA, E3, o3, SF, E4, o4, coupler, E5, o5]  
+
+    n = 2^15
+    T0 = 1.e-10
+    P0 = 1.e-10
+    T = 3.e-9
+    # p = Pulse(1, 1.e-9, 1.e-10, 0., 0., n, T)
     p = WhiteNoisePulse(1.e-10, n, T)
     
     @show bandwidth_wl(n, T, wl0)
