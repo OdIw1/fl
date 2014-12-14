@@ -93,11 +93,11 @@ rk4ip_vec!(p::Pulse, f::Fiber, nt_plot=0, nz_plot=0) =
             RK4IP_VEC_DEBUG && mod(n_steps, 100) == 0 && @show (n_steps, z, h)    
 
             if (adaptive_step == ADAPTIVE_STEP)
-                err_prev = err
                 BLAS.blascopy!(n, u_half2X, 1, uX, 1);      BLAS.blascopy!(n, u_half2Y, 1, uY, 1)
 
                 h = max(h * scale_step_ok(err, err_prev), hmin)
                 h = min(L - z, h)
+                err_prev = err
             else
                 BLAS.blascopy!(n, u_fullX, 1, uX, 1);       BLAS.blascopy!(n, u_fullY, 1, uY, 1)
             end

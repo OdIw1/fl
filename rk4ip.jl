@@ -1,5 +1,6 @@
 # Runge-Kutta 4th order in the Interaction Picture methods
 RK4IP_SCAL_DEBUG = false
+DEBUG_STEP_FACTOR = 1
 
 rk4ip_scal!(p::Pulse, f::Fiber) = 
     rk4ip_scal!(p.uX, p.t, p.w, f.L, 1e-6f.L, f.max_steps, f.adaptive_step,
@@ -39,6 +40,7 @@ rk4ip_scal!(p::Pulse, f::Fiber) =
     disp_full = exp(h/2 * d_exp)
     disp_half = exp(h/4 * d_exp)
 
+
     # prepare plotting
     do_plot = (nt_plot != 0 && nz_plot !=0)
     dz_plot = L / (nt_plot-1)
@@ -70,7 +72,7 @@ rk4ip_scal!(p::Pulse, f::Fiber) =
             err = integration_error_global(u_full, u_half2, _ue_cplx)
         end
 
-        if (adaptive_step == ADAPTIVE_STEP) & (err > 1) & (h > hmin)
+        if (adaptive_step == ADAPTIVE_STEP) && (err > 1) && (h > hmin)
             n_steps_rejected += 1
             h *= scale_step_fail(err, err_prev)
             hd2 = h/2
@@ -81,14 +83,17 @@ rk4ip_scal!(p::Pulse, f::Fiber) =
             z += h
             n_steps += 1
             push!(steps, h)
-            RK4IP_VEC_DEBUG && mod(n_steps, 100) == 0 && @show (n_steps, z, h)
-
+            if RK4IP_SCAL_DEBUG && mod(n_steps, DEBUG_STEP_FACTOR) == 0 
+                @show err
+                @show (n_steps, n_steps_rejected, z, h)
+                @show pulse_energy(u_half2, dt), pulse_energy(u_full, dt)
+            end
             if (adaptive_step == ADAPTIVE_STEP)
-                err_prev = err
                 BLAS.blascopy!(n, u_half2, 1, u, 1)
 
                 h = max(h* scale_step_ok(err, err_prev), hmin)
                 h = min(L - z, h)
+                err_prev = err
             else
                 BLAS.blascopy!(n, u_full, 1, u, 1)
             end
@@ -121,14 +126,13 @@ function rk4ip_step!(u, uf, h, disp, N!, fft_plan!, ifft_plan!,
     ifft_plan!(u1)
     @devec u1[:] = disp .* u1           
     fft_plan!(u1)
-        
     BLAS.blascopy!(n, u1, 1, k2, 1)
     BLAS.blascopy!(n, u1, 1, k3, 1)
     BLAS.blascopy!(n, u1, 1, k4, 1)
     BLAS.blascopy!(n, u1, 1, uf, 1)
     
     # k1 = FFT(D * IFFT(N(u)))
-    N!(k1, h)
+    N!(k1, h)       
     ifft_plan!(k1)
     @devec k1[:] = disp .* k1
     fft_plan!(k1)
@@ -156,6 +160,7 @@ function rk4ip_step!(u, uf, h, disp, N!, fft_plan!, ifft_plan!,
     @devec uf[:] = disp .* uf
     fft_plan!(uf)           
     BLAS.axpy!(n, 1/6 + 0.im, k4, 1, uf, 1)
+    # check_NaN(disp, u, u1, k1, k2, k3, k4, uf)
 end
 
 function N_rk4ip_simple_scal!(u, h, dt, gamma, _uabs2)

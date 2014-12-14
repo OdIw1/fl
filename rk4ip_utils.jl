@@ -1,6 +1,11 @@
 ADAPTIVE_STEP = true
 FIXED_STEP = false
 
+function pulse_energy(u, dt)
+    n = length(u)
+    energy = sqr(BLAS.nrm2(n, u, 1)) * dt    
+end 
+
 function gain_spectral_factor(w, g, g_bandwidth)
     0.5g ./ (1 + w.^2 / g_bandwidth^2)
 end
@@ -48,8 +53,9 @@ function df!(u, du, dx)
     end
 end
 
+# atol should be adjusting according to pulse energy
 function integration_error_local{T1<:Complex, T2<:Real}(u1::Vector{T1}, u2::Vector{T1},
-                                                        ue_::Vector{T2}, atol=1.e-6, rtol=1.e-6)
+                                                        ue_::Vector{T2}, atol=1.e-20, rtol=1.e-6)
     @simd for i in 1:length(u1)
         @inbounds ue_[i] = abs(u1[i] - u2[i]) / (atol + rtol * max(abs(u1[i]), abs(u2[i])))
     end
@@ -58,7 +64,7 @@ function integration_error_local{T1<:Complex, T2<:Real}(u1::Vector{T1}, u2::Vect
 end
 
 function integration_error_global{T<:Complex}(u1::Vector{T}, u2::Vector{T},
-                                              ue_cplx_::Vector{T}, atol=1.e-6, rtol=1.e-6)
+                                              ue_cplx_::Vector{T}, atol=1.e-20, rtol=1.e-6)
     n = length(u1)
     BLAS.blascopy!(n, u2, 1, ue_cplx_, 1)
     BLAS.axpy!(n, -1. + 0im, u1, 1, ue_cplx_, 1)
@@ -75,4 +81,12 @@ end
 
 function scale_step_ok(err, err_prev, ae=0.7, be=0.4)
     0.8min(10, PI_control_factor(err, err_prev, ae, be))
+end
+
+function check_NaN(X...)
+    for x in X
+        @show maxabs(x)
+        any(isnan, x) && error("NaN encountered")
+    end
+    error("just terminating")
 end
