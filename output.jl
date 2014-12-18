@@ -99,23 +99,23 @@ end
 
 
 
-function preprocess_plot(dir::String, fname_prefix::String, T=Complex{Float64}::Type;
-                         preprocessing_fun=identity::Function,
+function preprocess_plot(dir::String, fname_postfix::String, T=Complex{Float64}::Type;
                          t_points=0, t_low=0, t_up=0, i_low=0, i_up=0)
     isdir(dir) || error("$dir is not a valid directory")
     dir_contents = readdir(dir)
     
-    R = Regex("^" * fname_prefix * "*.tsv\$")
+    R = Regex("^.*" * fname_postfix * ".tsv\$")
     files = sort(filter(f -> ismatch(R, f), dir_contents))
+
     n_files = length(files)
     i_low = i_low == 0 ? 1: clamp(i_low, 1, n_files)
-    i_up = i_up == 0 ? length(files): clamp(i_up, 1, n_files) 
+    i_up = i_up == 0 ? n_files: clamp(i_up, 1, n_files) 
     files = files[i_low:i_up]
 
     data = {}
     for fname in files 
-        f = open(fname, "r")
-        d = readdlm(f)
+        f = open(joinpath(dir, fname), "r")
+        d = readdlm(f, T)
         close(f)
         r = resample(d, t_points, t_low, t_up)
         push!(d, r)
@@ -128,9 +128,13 @@ end
 
 function resample{T}(a::Vector{T}, t_points=0::Integer, t_low=0::Integer, t_up=0::Integer)
     n = length(a)
-    t_low = t_low == 0 ? 1: clamp(t_low, 1, n)
-    t_up = t_up == 0 ? length(a): clamp(t_up, 1, n)
-    t_points = t_points == 0 ? length(a): clamp(t_points, 1, n)
+    t_low    = t_low == 0 ? 1: clamp(t_low, 1, n)
+    t_up     = t_up == 0 ? n: clamp(t_up, 1, n)
+    if t_points == 0 
+        return a
+    else 
+        t_points = clamp(t_points, 1, n)
+    end
 
     averaging_interval_width = int(ceil((t_up - t_low)/(2*(t_points-1))))
     t_indices = map(int, round(linspace(t_low, t_up, t_points)))
