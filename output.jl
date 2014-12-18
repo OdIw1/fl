@@ -163,7 +163,7 @@ function resample{T}(a::Vector{T}, t_points=0::Integer, t_low=0::Integer, t_up=0
     
     for i = 1:t_points
         l = max(1, t_indices[i] - averaging_interval_width)
-        u = min(t_points, t_indices[i] + averaging_interval_width)
+        u = min(n, t_indices[i] + averaging_interval_width)
         r[i] = mean(a[l:u])
     end
     return r
