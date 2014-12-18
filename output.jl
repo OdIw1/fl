@@ -30,6 +30,24 @@ function mkpath_today(path)
     error("$path seems to have thousand of data dirs already, try somewhere else")
 end
 
+function fread_complex(fname)
+    f = open(fname, "r")
+    str_data = readdlm(f, '~', String) # '~' hopefully shouldn't be there
+    map!(strip, str_data)
+    str_data = filter(s -> !isempty(s), str_data)
+
+    n = length(str_data)
+    r = zeros(Complex{Float64}, n)
+    for i = 1:n
+        cstr = str_data[i]
+        cstr_splitted = split(cstr, " ")
+        re_str, im_str = first(cstr_splitted), last(cstr_splitted)
+        im_str = replace(im_str, "im", "")
+        sign = ("+" in cstr_splitted) ? 1.0 : -1.0
+        r[i] = Complex(float64(re_str), sign * float64(im_str))
+    end
+    r
+end
 
 function clampl{T1<:Complex, T2<:Real}(x::T1, lo::T2)
     ax = abs(x)
@@ -99,7 +117,7 @@ end
 
 
 
-function preprocess_plot(dir::String, fname_postfix::String, T=Complex{Float64}::Type;
+function preprocess_plot(dir::String, fname_postfix::String;
                          t_points=0, t_low=0, t_up=0, i_low=0, i_up=0)
     isdir(dir) || error("$dir is not a valid directory")
     dir_contents = readdir(dir)
@@ -112,18 +130,21 @@ function preprocess_plot(dir::String, fname_postfix::String, T=Complex{Float64}:
     i_up = i_up == 0 ? n_files: clamp(i_up, 1, n_files) 
     files = files[i_low:i_up]
 
-    data = {}
-    for fname in files 
-        f = open(joinpath(dir, fname), "r")
-        d = readdlm(f, T)
-        close(f)
+    processed = {}
+    for fname in files
+        print("processing $fname\r") 
+        d = fread_complex(joinpath(dir, fname))
         r = resample(d, t_points, t_low, t_up)
-        push!(d, r)
+        print(r)
+        push!(processed, r)
     end
-    outname = "!" * fname_prefix * "_resampled.tsv"
-    f = open(outname, "w+")
-    writedlm(f, d)
+
+    outname = "!" * fname_postfix * "_resampled.tsv"
+    f = open(joinpath(dir, outname), "w+")
+    writedlm(f, processed , ',')
     close(f)
+    
+    return processed
 end
 
 function resample{T}(a::Vector{T}, t_points=0::Integer, t_low=0::Integer, t_up=0::Integer)
