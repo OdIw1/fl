@@ -118,7 +118,7 @@ end
 
 
 function postprocess_plot(dir::String, fname_postfix::String;
-                          processing_fun=resample_plot::Funtion,  
+                          processing_fun=resample_plot::Function,  
                           t_points=0, t_low=0, t_up=0, i_low=0, i_up=0)
     isdir(dir) || error("$dir is not a valid directory")
     dir_contents = readdir(dir)
@@ -161,9 +161,9 @@ function resample_plot{T}(a::Vector{T}, t_points=0::Integer, t_low=0::Integer, t
     t_low    = t_low == 0 ? 1: clamp(t_low, 1, n)
     t_up     = t_up == 0 ? n: clamp(t_up, 1, n)
     if t_points == 0 
-        return a
+        return a[t_low:t_up]
     else 
-        t_points = clamp(t_points, 1, n)
+        t_points = clamp(t_points, 1, t_up - t_low + 1)
     end
 
     averaging_interval_width = int(ceil((t_up - t_low)/(2*(t_points-1))))
