@@ -30,9 +30,9 @@ function mkpath_today(path)
     error("$path seems to have thousand of data dirs already, try somewhere else")
 end
 
-function fread_complex(fname)
+function fread_complex(fname, delimiter=',')
     f = open(fname, "r")
-    str_data = readdlm(f, '~', String) # '~' hopefully shouldn't be there
+    str_data = readdlm(f, delimiter, String)
     map!(strip, str_data)
     str_data = filter(s -> !isempty(s), str_data)
 
@@ -117,8 +117,9 @@ end
 
 
 
-function preprocess_plot(dir::String, fname_postfix::String;
-                         t_points=0, t_low=0, t_up=0, i_low=0, i_up=0)
+function postprocess_plot(dir::String, fname_postfix::String;
+                          processing_fun=resample_plot::Funtion,  
+                          t_points=0, t_low=0, t_up=0, i_low=0, i_up=0)
     isdir(dir) || error("$dir is not a valid directory")
     dir_contents = readdir(dir)
     
@@ -129,17 +130,25 @@ function preprocess_plot(dir::String, fname_postfix::String;
     i_low = i_low == 0 ? 1: clamp(i_low, 1, n_files)
     i_up = i_up == 0 ? n_files: clamp(i_up, 1, n_files) 
     files = files[i_low:i_up]
+    n_files = length(files) # yes, again
 
-    processed = {}
-    for fname in files
+    processed = false
+    for (i, fname) in enumerate(files)
         print("processing $fname\r") 
         d = fread_complex(joinpath(dir, fname))
-        r = resample(d, t_points, t_low, t_up)
-        print(r)
-        push!(processed, r)
+        r = processing_fun(d, t_points, t_low, t_up)
+        if processed == false
+            width = length(r) 
+            processed = Array(Complex{Float64}, n_files, width)
+        end
+        length(r) != width && error("dimension mismatch while reading $fname")
+
+        for j in 1:width
+            processed[i, j] = r[j]
+        end
     end
 
-    outname = "!" * fname_postfix * "_resampled.tsv"
+    outname = "!" * fname_postfix * "-resampled.tsv"
     f = open(joinpath(dir, outname), "w+")
     writedlm(f, processed , ',')
     close(f)
@@ -147,7 +156,7 @@ function preprocess_plot(dir::String, fname_postfix::String;
     return processed
 end
 
-function resample{T}(a::Vector{T}, t_points=0::Integer, t_low=0::Integer, t_up=0::Integer)
+function resample_plot{T}(a::Vector{T}, t_points=0::Integer, t_low=0::Integer, t_up=0::Integer)
     n = length(a)
     t_low    = t_low == 0 ? 1: clamp(t_low, 1, n)
     t_up     = t_up == 0 ? n: clamp(t_up, 1, n)
@@ -167,4 +176,66 @@ function resample{T}(a::Vector{T}, t_points=0::Integer, t_low=0::Integer, t_up=0
         r[i] = mean(a[l:u])
     end
     return r
-end 
+end
+
+function select_index_plot{T}(a::Vector{T}, t_points=0::Integer, args...)
+    n = length(a)
+    i = t_points == 0 ? div(n, 2) : clamp(t_points, 1, n)
+    return a[i]
+end
+
+function dispersion_relation(dir::String, fname_postfix::String;  
+                            t_points=0, t_low=0, t_up=0, i_low=0, i_up=0)
+    isdir(dir) || error("$dir is not a valid directory")
+    dir_contents = readdir(dir)
+    
+    R = Regex("^.*" * fname_postfix * ".tsv\$")
+    files = sort(filter(f -> ismatch(R, f), dir_contents))
+
+    n_files = length(files)
+    i_low = i_low == 0 ? 1: clamp(i_low, 1, n_files)
+    i_up = i_up == 0 ? n_files: clamp(i_up, 1, n_files) 
+    files = files[i_low:i_up]
+    n_files = length(files) # yes, again
+
+    processed = false
+    for (i, fname) in enumerate(files)
+        print("processing $fname\r") 
+        r = fread_complex(joinpath(dir, fname))
+        if processed == false
+            width = length(r) 
+            processed = Array(Complex{Float64}, n_files, width)
+        end
+        length(r) != width && error("dimension mismatch while reading $fname")
+        
+        for j in 1:width
+            processed[i,j] = r[j]
+        end
+    end
+
+    print("calculating fft")
+    fft!(processed)
+
+    i_max, j_max = size(processed)
+    resampled = false
+    for i = 1:i_max
+        a = processed[i,:]
+        a = resample_plot(a, t_points, t_low, t_up)
+
+        if resampled == false
+            width = length(a) 
+            resampled = Array(eltype(processed), n_files, width)
+        end
+
+        for j in 1:width
+            resampled[i, j] = a[j]
+        end
+    end
+
+    outname = "!" * fname_postfix * "-dispersion-relation.tsv"
+    f = open(joinpath(dir, outname), "w+")
+    writedlm(f, resampled , ',')
+    close(f)
+    
+    return resampled
+end
