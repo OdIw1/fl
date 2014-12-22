@@ -371,10 +371,10 @@ function Felleher14(adaptive_step=false, n_iter=9999)
     gain_bw = bandwidth_wl2fr_derivative(wl0, gain_bw_wl)
 
     La = 2.
-    Lp = 1000.
+    Lp = 100.
     t_round = (La + Lp) * 1.47 / 3.e8
     SCALE = (La + Lp) / 1202.
-    sat_e = 200.e-12 * SCALE
+    sat_e = 125.e-12 * SCALE
 
     steps_per_meter = 500
 
@@ -385,9 +385,9 @@ function Felleher14(adaptive_step=false, n_iter=9999)
     Fp = FiberPassive(Lp, 0., betha, gamma,
                       15000, adaptive_step)
 
-    SA = SaturableAbsorber(0.3, 10.e1 / SCALE, 0.45)
+    SA = SaturableAbsorber(0.3, 1.e-1 / SCALE, 0.45)
     coupler = Coupler(1 - 1./ 10^(3./10))
-    SF = GaussianSpectralFilter(wl0, 10.e-9) # THIS IS IMPORTANT
+    SF = GaussianSpectralFilter(wl0, 30.e-9) # THIS IS IMPORTANT
     polarizer = Polarizer()
 
     outdir = mkpath_today("/home/s_koval/vm_shared")
@@ -407,7 +407,7 @@ function Felleher14(adaptive_step=false, n_iter=9999)
                          SA, E3, o3, SF, E4, o4, coupler, E5, o5]  
 
     n = 2^15
-    T = 30.e-10
+    T = 2.5e-10
     # p = Pulse(1, 1.e-9, 1.e-10, 0., 0., n, T)
     p = WhiteNoisePulse(1.e-10, n, T)
     

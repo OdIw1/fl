@@ -118,6 +118,7 @@ end
 
 
 function postprocess_plot(dir::String, fname_postfix::String;
+                          out_prefix="!"::String,
                           processing_fun=resample_plot::Function,  
                           t_points=0, t_low=0, t_up=0, i_low=0, i_up=0)
     isdir(dir) || error("$dir is not a valid directory")
@@ -148,7 +149,7 @@ function postprocess_plot(dir::String, fname_postfix::String;
         end
     end
 
-    outname = "!" * fname_postfix * "-resampled.tsv"
+    outname = out_prefix * fname_postfix * "-resampled.tsv"
     f = open(joinpath(dir, outname), "w+")
     writedlm(f, processed , ',')
     close(f)
