@@ -96,13 +96,23 @@ function spectrum!(u, U, ifft_plan!, T)
     BLAS.scal!(n, T * sqrt(2/pi), U, 1)
 end
 
-function fftshift!(u)
+function fftshift!(u::Vector)
     n = length(u)
     mod(n, 2) == 0 || Error("fftshift! is defined only for even-length arrays")
 
     shift = div(n, 2)
     for i = 1:shift
         u[i], u[shift+i] = u[shift+i], u[i]
+    end
+end
+
+function fftshift!(u::Matrix)
+    n, m = size(u)
+    mod(m, 2) == 0 || Error("fftshift! is defined only for even-width matrices")
+
+    shift = div(m, 2)
+    for j = 1:n, i = 1:shift
+        u[j, i], u[j, shift+i] = u[j, shift+i], u[j, i]
     end
 end
 
