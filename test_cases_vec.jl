@@ -363,7 +363,7 @@ function Yarutkina13_scalar(adaptive_step=false, n_iter=9999)
     run_laser_scheme!(p, laser, n_iter)
 end
 
-function Felleher14(adaptive_step=false, n_iter=9999)
+function Felleher14home(adaptive_step=false, n_iter=9999)
     # fiber parameters are from 14[Felleher et al.]{Opt.Lett} Chirp pulse
     # formation dynamics in ultra-long mode-locked fiber lasers
     wl0 = 1550.e-9
