@@ -363,7 +363,7 @@ function Yarutkina13_scalar(adaptive_step=false, n_iter=9999)
     run_laser_scheme!(p, laser, n_iter)
 end
 
-function Felleher14home(adaptive_step=false, n_iter=9999)
+function Felleher14WG(adaptive_step=false, n_iter=9999)
     # fiber parameters are from 14[Felleher et al.]{Opt.Lett} Chirp pulse
     # formation dynamics in ultra-long mode-locked fiber lasers
     wl0 = 1550.e-9
@@ -388,6 +388,58 @@ function Felleher14home(adaptive_step=false, n_iter=9999)
     SA = SaturableAbsorber(0.3, 5.e0 / SCALE, 0.45)
     coupler = Coupler(1 - 1./ 10^(3./10))
     SF = GaussianSpectralFilter(wl0, 8.e-9) # THIS IS IMPORTANT
+    polarizer = Polarizer()
+
+    outdir = mkpath_today("/home/s_koval/vm_shared")
+    o1   = FileOutput(outdir, "1", ONLY_X)
+    o2   = FileOutput(outdir, "2", ONLY_X)
+    o3   = FileOutput(outdir, "3", ONLY_X)
+    o4   = FileOutput(outdir, "4", ONLY_X)
+    o5   = FileOutput(outdir, "5", ONLY_X)
+
+    E1 = PulseSensor("SMF1")
+    E2 = PulseSensor("gain")
+    E3 = PulseSensor("SA")
+    E4 = PulseSensor("SF")
+    E5 = PulseSensor("coupler")
+
+    laser = LaserElement[polarizer, Fp, E1, o1, Fa, E2, o2, 
+                         SA, E3, o3, SF, E4, o4, coupler, E5, o5]  
+
+    n = 2^15
+    T = 2.0e-10
+    # p = Pulse(1, 1.e-9, 1.e-10, 0., 0., n, T)
+    p = WhiteNoisePulse(1.e-10, n, T)
+    
+    @show bandwidth_wl(n, T, wl0)
+    run_laser_scheme!(p, laser, n_iter)
+end
+
+function Felleher14home(adaptive_step=false, n_iter=9999)
+    # fiber parameters are from 14[Felleher et al.]{Opt.Lett} Chirp pulse
+    # formation dynamics in ultra-long mode-locked fiber lasers
+    wl0 = 1550.e-9
+    gain_bw_wl = 40.e-9
+    gain_bw = bandwidth_wl2fr_derivative(wl0, gain_bw_wl)
+
+    La = 2.
+    Lp = 1000.
+    t_round = (La + Lp) * 1.47 / 3.e8
+    SCALE = (La + Lp) / 1202.
+    sat_e = 200.e-12 * SCALE
+
+    steps_per_meter = 500
+
+    betha = ps_m2s_m([0.018])
+    gamma = 3.e-3
+    Fa = Fiber(La, 0., betha, gamma, 10^(30./10), gain_bw, sat_e, 
+               1000, adaptive_step)
+    Fp = FiberPassive(Lp, 0., betha, gamma,
+                      15000, adaptive_step)
+
+    SA = SaturableAbsorber(0.3, 10.e1 / SCALE, 0.45)
+    coupler = Coupler(1 - 1./ 10^(3./10))
+    SF = GaussianSpectralFilter(wl0, 10.e-9) # THIS IS IMPORTANT
     polarizer = Polarizer()
 
     outdir = mkpath_today("/home/s_koval/vm_shared")
