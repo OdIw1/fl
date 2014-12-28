@@ -27,9 +27,12 @@ function run_scalar(n, T_window, alpha, betha, gamma, t_raman, steep, L, T0, P0,
     fwrite(joinpath(outdir, "u0.tsv"), abs2(u0))
     fwrite(joinpath(outdir, "v0.tsv"), abs2(v0))
 
-    (u1, u_plot, v_plot, n_steps, n_steps_rejected, steps) = 
-        rk4ip(u, L, 1.e-10L, t, w, alpha, betha, gamma, steep, t_raman,
-              fft_plan!, ifft_plan!)
+    (u_plot, v_plot, n_steps, n_steps_rejected, steps) = 
+        rk4ip_scal!(u, t, w, L, 1.e-10L, 10000, ADAPTIVE_STEP,
+                    alpha, betha, gamma, steep, t_raman,
+                    0., 1.e40, 1.e40,
+                    fft_plan!, ifft_plan!,
+                    2^12,2^12)
 
     fwrite(joinpath(outdir, "u_log_plot.tsv"), clamp_log_plot(u_plot))
     fwrite(joinpath(outdir, "v_log_plot.tsv"), clamp_log_plot(v_plot))
